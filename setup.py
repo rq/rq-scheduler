@@ -18,7 +18,7 @@ setup(
     rqscheduler = rq_scheduler.scripts.rqscheduler:main
     ''',
     package_data = { '': ['README.rst'] },
-    install_requires=['rq>=0.3.1'],
+    install_requires=['rq>=0.3.5'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
