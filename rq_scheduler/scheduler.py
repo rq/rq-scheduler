@@ -3,7 +3,7 @@ import time
 import warnings
 
 from datetime import datetime, timedelta
-from itertools import repeat
+from itertools import repeat, izip
 
 try:
     from logbook import Logger
@@ -16,7 +16,18 @@ from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
 
-from redis import WatchError
+from redis import WatchError, StrictRedis
+
+
+def chunks(iterable, n):
+    args = [iter(iterable)] * n
+    return izip(*args)
+
+
+def flip_pairs(l):
+    for x, y in chunks(l, 2):
+        yield y
+        yield x
 
 
 class Scheduler(object):
@@ -104,8 +115,7 @@ class Scheduler(object):
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
-        self.connection.zadd(self.scheduled_jobs_key, job.id,
-                             int(scheduled_time.strftime('%s')))
+        self.zadd(job.id, int(scheduled_time.strftime('%s')))
         return job
 
     def enqueue_in(self, time_delta, func, *args, **kwargs):
@@ -115,8 +125,7 @@ class Scheduler(object):
         to datetime.now().
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
-        self.connection.zadd(self.scheduled_jobs_key, job.id,
-                             int((datetime.now() + time_delta).strftime('%s')))
+        self.zadd(job.id, int((datetime.now() + time_delta).strftime('%s')))
         return job
 
     def enqueue_periodic(self, scheduled_time, interval, repeat, func,
@@ -146,8 +155,7 @@ class Scheduler(object):
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
         job.save()
-        self.connection.zadd(self.scheduled_jobs_key, job.id,
-                             int(scheduled_time.strftime('%s')))
+        self.zadd(job.id, int(scheduled_time.strftime('%s')))
         return job
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
@@ -191,7 +199,7 @@ class Scheduler(object):
                     pipe.watch(self.scheduled_jobs_key)
                     if pipe.zscore(self.scheduled_jobs_key, job.id) is None:
                         raise ValueError('Job not in scheduled jobs queue')
-                    pipe.zadd(self.scheduled_jobs_key, job.id, int(date_time.strftime('%s')))
+                    self.zadd(job.id, int(date_time.strftime('%s')), pipe=pipe)
                     break
                 except WatchError:
                     # If job is still in the queue, retry otherwise job is already executed
@@ -259,7 +267,7 @@ class Scheduler(object):
         """
         self.log.debug('Pushing {0} to {1}'.format(job.id, job.origin))
 
-        interval = job.meta.get('interval', None) 
+        interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
 
         # If job is a repeated job, decrement counter
@@ -277,8 +285,7 @@ class Scheduler(object):
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
-            self.connection.zadd(self.scheduled_jobs_key, job.id,
-                int(datetime.now().strftime('%s')) + int(interval))
+            self.zadd(job.id, int(datetime.now().strftime('%s')) + int(interval))
 
     def enqueue_jobs(self):
         """
@@ -303,3 +310,21 @@ class Scheduler(object):
                 time.sleep(self._interval)
         finally:
             self.register_death()
+
+    def zadd(self, *args, **kwargs):
+        """
+        Custom ZADD interface that adapts to match the argument order of the currently
+        used backend.  Using this method makes it transparent whether you use a Redis
+        or a StrictRedis connection.
+        """
+        if 'pipe' in kwargs:
+            conn = kwargs['pipe']
+        else:
+            conn = self.connection
+
+        # If we're dealing with StrictRedis, flip each pair of imaginary
+        # (name, score) tuples in the args list
+        if isinstance(conn, StrictRedis):  # StrictPipeline is a subclass of StrictRedis, too
+            args = tuple(flip_pairs(args))
+
+        return conn.zadd(self.scheduled_jobs_key, *args)
