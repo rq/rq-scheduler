@@ -324,9 +324,7 @@ class Scheduler(object):
 
         # If we're dealing with StrictRedis, flip each pair of imaginary
         # (name, score) tuples in the args list
-        print 'GOT:', args
         if isinstance(conn, StrictRedis):  # StrictPipeline is a subclass of StrictRedis, too
             args = tuple(flip_pairs(args))
-        print 'MADE IT:', args
 
         return conn.zadd(self.scheduled_jobs_key, *args)
