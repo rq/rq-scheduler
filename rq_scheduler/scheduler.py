@@ -6,7 +6,7 @@ import warnings
 from datetime import datetime, timedelta
 from itertools import repeat
 
-from rq.connections import get_current_connection
+from rq.connections import resolve_connection
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
@@ -22,9 +22,7 @@ class Scheduler(object):
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
 
     def __init__(self, queue_name='default', interval=60, connection=None):
-        if connection is None:
-            connection = get_current_connection()
-        self.connection = connection
+        self.connection = resolve_connection(connection)
         self.queue_name = queue_name
         self._interval = interval
         self.log = logger
@@ -35,14 +33,14 @@ class Scheduler(object):
             raise ValueError("There's already an active RQ scheduler")
         key = self.scheduler_key
         now = time.time()
-        with self.connection.pipeline() as p:
+        with self.connection._pipeline() as p:
             p.delete(key)
             p.hset(key, 'birth', now)
             p.execute()
 
     def register_death(self):
         """Registers its own death."""
-        with self.connection.pipeline() as p:
+        with self.connection._pipeline() as p:
             p.hset(self.scheduler_key, 'death', time.time())
             p.expire(self.scheduler_key, 60)
             p.execute()
@@ -102,8 +100,9 @@ class Scheduler(object):
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
-        self.connection.zadd(self.scheduled_jobs_key, job.id,
-                             int(scheduled_time.strftime('%s')))
+        self.connection._zadd(self.scheduled_jobs_key,
+                              int(scheduled_time.strftime('%s')),
+                              job.id)
         return job
 
     def enqueue_in(self, time_delta, func, *args, **kwargs):
@@ -113,8 +112,9 @@ class Scheduler(object):
         to datetime.now().
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
-        self.connection.zadd(self.scheduled_jobs_key, job.id,
-                             int((datetime.now() + time_delta).strftime('%s')))
+        self.connection._zadd(self.scheduled_jobs_key,
+                              int((datetime.now() + time_delta).strftime('%s')),
+                              job.id)
         return job
 
     def enqueue_periodic(self, scheduled_time, interval, repeat, func,
@@ -144,8 +144,9 @@ class Scheduler(object):
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
         job.save()
-        self.connection.zadd(self.scheduled_jobs_key, job.id,
-                             int(scheduled_time.strftime('%s')))
+        self.connection._zadd(self.scheduled_jobs_key,
+                              int(scheduled_time.strftime('%s')),
+                              job.id)
         return job
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
@@ -183,13 +184,13 @@ class Scheduler(object):
         """
         Change a job's execution time. Wrap this in a transaction to prevent race condition.
         """
-        with self.connection.pipeline() as pipe:
+        with self.connection._pipeline() as pipe:
             while 1:
                 try:
                     pipe.watch(self.scheduled_jobs_key)
                     if pipe.zscore(self.scheduled_jobs_key, job.id) is None:
                         raise ValueError('Job not in scheduled jobs queue')
-                    pipe.zadd(self.scheduled_jobs_key, job.id, int(date_time.strftime('%s')))
+                    pipe.zadd(self.scheduled_jobs_key, int(date_time.strftime('%s')), job.id)
                     break
                 except WatchError:
                     # If job is still in the queue, retry otherwise job is already executed
@@ -257,7 +258,7 @@ class Scheduler(object):
         """
         self.log.debug('Pushing {0} to {1}'.format(job.id, job.origin))
 
-        interval = job.meta.get('interval', None) 
+        interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
 
         # If job is a repeated job, decrement counter
@@ -275,8 +276,9 @@ class Scheduler(object):
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
-            self.connection.zadd(self.scheduled_jobs_key, job.id,
-                int(datetime.now().strftime('%s')) + int(interval))
+            self.connection._zadd(self.scheduled_jobs_key,
+                                  int(datetime.now().strftime('%s')) + int(interval),
+                                  job.id)
 
     def enqueue_jobs(self):
         """

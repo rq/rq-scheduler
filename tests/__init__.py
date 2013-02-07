@@ -1,5 +1,5 @@
 import unittest
-from redis import Redis
+from redis import StrictRedis
 from logbook import NullHandler
 from rq import push_connection, pop_connection
 
@@ -9,7 +9,7 @@ def find_empty_redis_database():
     will use/connect it when no keys are in there.
     """
     for dbnum in range(4, 17):
-        testconn = Redis(db=dbnum)
+        testconn = StrictRedis(db=dbnum)
         empty = len(testconn.keys('*')) == 0
         if empty:
             return testconn
