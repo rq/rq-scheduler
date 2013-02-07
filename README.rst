@@ -174,6 +174,11 @@ The script accepts these arguments:
 Changelog
 =========
 
+Version 0.3.5:
+
+* Support ``StrictRedis``
+
+
 Version 0.3.4:
 
 * Scheduler related job attributes (``interval`` and ``repeat``) are now stored
