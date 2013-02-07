@@ -1,3 +1,4 @@
+import logging
 import signal
 import time
 import warnings
@@ -5,18 +6,15 @@ import warnings
 from datetime import datetime, timedelta
 from itertools import repeat
 
-try:
-    from logbook import Logger
-    Logger = Logger   # Does nothing except it shuts up pyflakes annoying error
-except ImportError:
-    from logging import Logger
-
 from rq.connections import get_current_connection
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
 
 from redis import WatchError
+
+
+logger = logging.getLogger(__name__)
 
 
 class Scheduler(object):
@@ -29,7 +27,7 @@ class Scheduler(object):
         self.connection = connection
         self.queue_name = queue_name
         self._interval = interval
-        self.log = Logger('scheduler')
+        self.log = logger
 
     def register_birth(self):
         if self.connection.exists(self.scheduler_key) and \
