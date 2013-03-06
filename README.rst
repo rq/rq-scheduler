@@ -174,6 +174,12 @@ The script accepts these arguments:
 Changelog
 =========
 
+Version 0.3.6:
+
+* Scheduler key is not set to expire a few seconds after the next scheduling
+  operation. This solves the issue of ``rqscheduler`` refusing to start after
+  an unexpected shut down.
+
 Version 0.3.5:
 
 * Support ``StrictRedis``
