@@ -19,7 +19,7 @@ def main():
     parser.add_argument('-i', '--interval', default=60, type=int
         , help="How often the scheduler checks for new jobs to add to the \
             queue (in seconds).")
-    parser.add_argument('--path', '-P', default='.', help='Specify the import path.')
+    parser.add_argument('--path', default='.', help='Specify the import path.')
     args = parser.parse_args()
     if args.path:
         sys.path = args.path.split(':') + sys.path
