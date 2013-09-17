@@ -171,10 +171,10 @@ class Scheduler(object):
         Pulls a job from the scheduler queue. This function accepts either a
         job_id or a job instance.
         """
-        if isinstance(job, basestring):
-            self.connection.zrem(self.scheduled_jobs_key, job)
-        else:
+        if isinstance(job, Job):
             self.connection.zrem(self.scheduled_jobs_key, job.id)
+        else:
+            self.connection.zrem(self.scheduled_jobs_key, job)
 
     def __contains__(self, item):
         """
@@ -230,6 +230,7 @@ class Scheduler(object):
             job_ids = zip(job_ids, repeat(None))
         jobs = []
         for job_id, sched_time in job_ids:
+            job_id = job_id.decode('utf-8')
             try:
                 job = Job.fetch(job_id, connection=self.connection)
                 if with_times:
