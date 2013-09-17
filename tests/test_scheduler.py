@@ -132,7 +132,7 @@ class TestScheduler(RQTestCase):
 
         job = scheduler.enqueue_at(now, say_hello)
         self.scheduler.enqueue_job(job)
-        self.assertNotIn(job, self.testconn.zrange(scheduler.scheduled_jobs_key, 0, 10))
+        self.assertNotIn(job, tl(self.testconn.zrange(scheduler.scheduled_jobs_key, 0, 10)))
         job = Job.fetch(job.id, connection=self.testconn)
         self.assertTrue(job.enqueued_at is not None)
         queue = scheduler.get_queue_for_job(job)
@@ -157,8 +157,8 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_in(time_delta, say_hello)
         # cancel the scheduled job and check that it's gone from the set
         self.scheduler.cancel(job)
-        self.assertNotIn(job.id, self.testconn.zrange(
-            self.scheduler.scheduled_jobs_key, 0, 1))
+        self.assertNotIn(job.id, tl(self.testconn.zrange(
+            self.scheduler.scheduled_jobs_key, 0, 1)))
 
     def test_change_execution_time(self):
         """
@@ -262,7 +262,7 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(time_now, say_hello, interval=interval, repeat=1)
         self.scheduler.enqueue_job(job)
         self.assertNotIn(job.id,
-            self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
         # If job is repeated twice, it should only be put back in the queue once
         job = self.scheduler.schedule(time_now, say_hello, interval=interval, repeat=2)
@@ -271,14 +271,14 @@ class TestScheduler(RQTestCase):
             tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.scheduler.enqueue_job(job)
         self.assertNotIn(job.id,
-            self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
         time_now = datetime.now()
         # Now the same thing using enqueue_periodic
         job = self.scheduler.enqueue_periodic(time_now, interval, 1, say_hello)
         self.scheduler.enqueue_job(job)
         self.assertNotIn(job.id,
-            self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
         # If job is repeated twice, it should only be put back in the queue once
         job = self.scheduler.enqueue_periodic(time_now, interval, 2, say_hello)
@@ -287,7 +287,7 @@ class TestScheduler(RQTestCase):
             tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.scheduler.enqueue_job(job)
         self.assertNotIn(job.id,
-            self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
     def test_missing_jobs_removed_from_scheduler(self):
         """
@@ -296,8 +296,8 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(datetime.now(), say_hello)
         job.cancel()
         self.scheduler.get_jobs_to_queue()
-        self.assertNotIn(job.id, self.testconn.zrange(
-            self.scheduler.scheduled_jobs_key, 0, 1))
+        self.assertNotIn(job.id, tl(self.testconn.zrange(
+            self.scheduler.scheduled_jobs_key, 0, 1)))
 
     def test_periodic_jobs_sets_ttl(self):
         """
