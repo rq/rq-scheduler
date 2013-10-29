@@ -210,7 +210,7 @@ class Scheduler(object):
         it's scheduled execution time is returned.
         """
         def epoch_to_datetime(epoch):
-            return datetime.fromtimestamp(float(epoch))
+            return times.to_universal(float(epoch))
 
         if until is None:
             until = "+inf"
