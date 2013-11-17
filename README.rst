@@ -177,6 +177,7 @@ Changelog
 Version 0.4.0
 -------------
 
+* Supports Python 3!
 * ``Scheduler.schedule`` now allows job ``timeout`` to be specified
 * ``rqscheduler`` allows Redis connection to be specified via ``--url`` argument
 * ``rqscheduler`` now accepts ``--path`` argument
