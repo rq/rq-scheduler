@@ -174,23 +174,34 @@ The script accepts these arguments:
 Changelog
 =========
 
-Version 0.3.6:
+Version 0.4.0
+-------------
+
+* ``Scheduler.schedule`` now allows job ``timeout`` to be specified
+* ``rqscheduler`` allows Redis connection to be specified via ``--url`` argument
+* ``rqscheduler`` now accepts ``--path`` argument
+
+Version 0.3.6
+-------------
 
 * Scheduler key is not set to expire a few seconds after the next scheduling
   operation. This solves the issue of ``rqscheduler`` refusing to start after
   an unexpected shut down.
 
-Version 0.3.5:
+Version 0.3.5
+-------------
 
 * Support ``StrictRedis``
 
 
-Version 0.3.4:
+Version 0.3.4
+-------------
 
 * Scheduler related job attributes (``interval`` and ``repeat``) are now stored
   in ``job.meta`` introduced in RQ 0.3.4
 
-Version 0.3.3:
+Version 0.3.3
+-------------
 
 * You can now check whether a job is scheduled for execution using
   ``job in scheduler`` syntax
@@ -198,10 +209,12 @@ Version 0.3.3:
 * ``scheduler.enqueue`` and ``scheduler.enqueue_periodic`` will now raise a
   DeprecationWarning, please use ``scheduler.schedule`` instead
 
-Version 0.3.2:
+Version 0.3.2
+-------------
 
 * Periodic jobs now require `RQ`_ >= 0.3.1
 
-Version 0.3:
+Version 0.3
+-----------
 
 * Added the capability to create periodic (cron) and repeated job using ``scheduler.enqueue``
