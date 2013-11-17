@@ -170,7 +170,7 @@ The script accepts these arguments:
 * ``-d`` or ``--db``: Redis db to use
 * ``-P`` or ``--password``: password to connect to Redis
 
-=========
+
 Changelog
 =========
 
