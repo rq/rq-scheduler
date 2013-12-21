@@ -6,7 +6,6 @@ import warnings
 from datetime import datetime, timedelta
 from itertools import repeat
 
-from rq.connections import resolve_connection
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
@@ -22,6 +21,7 @@ class Scheduler(object):
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
 
     def __init__(self, queue_name='default', interval=60, connection=None):
+        from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self.queue_name = queue_name
         self._interval = interval
