@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import os
 
 from redis import Redis
 from rq_scheduler.scheduler import Scheduler
@@ -20,9 +21,15 @@ def main():
         , help="How often the scheduler checks for new jobs to add to the \
             queue (in seconds).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
+    parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
     args = parser.parse_args()
     if args.path:
         sys.path = args.path.split(':') + sys.path
+    if args.pid:
+        pid = str(os.getpid())
+        filename = args.pid
+        with open(filename, 'w') as f:
+            f.write(pid)
     if args.url is not None:
         connection = Redis.from_url(args.url)
     else:
