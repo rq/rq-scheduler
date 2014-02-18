@@ -103,9 +103,13 @@ class Scheduler(object):
         scheduler = Scheduler(queue_name='default', connection=redis)
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
+        def datetime_to_timestamp(dt):
+            return time.mktime(dt.timetuple()) - time.mktime((1970, 1, 1, 0, 0, 0, 0, 0, 0))
+    
+    
         job = self._create_job(func, args=args, kwargs=kwargs)
         self.connection._zadd(self.scheduled_jobs_key,
-                              int(scheduled_time.strftime('%s')),
+                              int(datetime_to_timestamp(scheduled_time)),
                               job.id)
         return job
 
@@ -215,7 +219,7 @@ class Scheduler(object):
         it's scheduled execution time is returned.
         """
         def epoch_to_datetime(epoch):
-            return datetime.fromtimestamp(float(epoch))
+            return datetime.utcfromtimestamp(float(epoch))
 
         if until is None:
             until = "+inf"
