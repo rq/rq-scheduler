@@ -7,7 +7,6 @@ import warnings
 from datetime import datetime, timedelta
 from itertools import repeat
 
-from rq.connections import resolve_connection
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
@@ -23,6 +22,7 @@ class Scheduler(object):
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
 
     def __init__(self, queue_name='default', interval=60, connection=None):
+        from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self.queue_name = queue_name
         self._interval = interval
@@ -37,6 +37,10 @@ class Scheduler(object):
         with self.connection._pipeline() as p:
             p.delete(key)
             p.hset(key, 'birth', now)
+            # Set scheduler key to expire a few seconds after polling interval
+            # This way, the key will automatically expire if scheduler
+            # quits unexpectedly
+            p.expire(key, self._interval + 10)
             p.execute()
 
     def register_death(self):
@@ -129,7 +133,7 @@ class Scheduler(object):
                             interval=interval, repeat=repeat)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None):
+                interval=None, repeat=None, result_ttl=None, timeout=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -144,6 +148,8 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
+        if timeout is not None:
+            job.timeout = timeout
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               times.to_unix(scheduled_time),
@@ -166,10 +172,10 @@ class Scheduler(object):
         Pulls a job from the scheduler queue. This function accepts either a
         job_id or a job instance.
         """
-        if isinstance(job, basestring):
-            self.connection.zrem(self.scheduled_jobs_key, job)
-        else:
+        if isinstance(job, Job):
             self.connection.zrem(self.scheduled_jobs_key, job.id)
+        else:
+            self.connection.zrem(self.scheduled_jobs_key, job)
 
     def __contains__(self, item):
         """
@@ -225,6 +231,7 @@ class Scheduler(object):
             job_ids = zip(job_ids, repeat(None))
         jobs = []
         for job_id, sched_time in job_ids:
+            job_id = job_id.decode('utf-8')
             try:
                 job = Job.fetch(job_id, connection=self.connection)
                 if with_times:
@@ -288,6 +295,9 @@ class Scheduler(object):
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
+        
+        # Refresh scheduler key's expiry
+        self.connection.expire(self.scheduler_key, self._interval + 10)
         return jobs
 
     def run(self):
