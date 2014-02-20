@@ -3,7 +3,6 @@ import signal
 import time
 import warnings
 
-import calendar
 from datetime import datetime, timedelta
 from itertools import repeat
 
@@ -13,28 +12,9 @@ from rq.queue import Queue
 
 from redis import WatchError
 
+from .utils import from_unix, to_unix
 
 logger = logging.getLogger(__name__)
-
-
-# utcnow, utcformat, and utcparse from rq.utils
-def utcnow():
-    return datetime.utcnow()
-
-
-def utcformat(dt):
-    return dt.strftime(u"%Y-%m-%dT%H:%M:%SZ")
-
-# from_unix from times.from_unix()
-def from_unix(string):
-    return datetime.utcfromtimestamp(float(string))
-
-
-# to_unix from times.to_unix()
-def to_unix(dt):
-    """Converts a datetime object to unixtime"""
-    return calendar.timegm(dt.utctimetuple())
-
 
 
 class Scheduler(object):
@@ -134,11 +114,11 @@ class Scheduler(object):
         """
         Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
         The job's scheduled execution time will be calculated by adding the timedelta
-        to utcnow().
+        to datetime.utcnow().
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
         self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(utcnow() + time_delta),
+                              to_unix(datetime.utcnow() + time_delta),
                               job.id)
         return job
 
@@ -243,7 +223,7 @@ class Scheduler(object):
         elif isinstance(until, datetime):
             until = to_unix(until)
         elif isinstance(until, timedelta):
-            until = to_unix((utcnow() + until))
+            until = to_unix((datetime.utcnow() + until))
         job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0,
                                                 until, withscores=with_times,
                                                 score_cast_func=epoch_to_datetime)
@@ -270,7 +250,7 @@ class Scheduler(object):
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
         """
-        return self.get_jobs(to_unix(utcnow()), with_times=with_times)
+        return self.get_jobs(to_unix(datetime.utcnow()), with_times=with_times)
 
     def get_queue_for_job(self, job):
         """
@@ -292,7 +272,7 @@ class Scheduler(object):
         # If job is a repeated job, decrement counter
         if repeat:
             job.meta['repeat'] = int(repeat) - 1
-        job.enqueued_at = utcnow()
+        job.enqueued_at = datetime.utcnow()
         job.save()
 
         queue = self.get_queue_for_job(job)
@@ -305,7 +285,7 @@ class Scheduler(object):
                 if job.meta['repeat'] == 0:
                     return
             self.connection._zadd(self.scheduled_jobs_key,
-                                  to_unix(utcnow()) + int(interval),
+                                  to_unix(datetime.utcnow()) + int(interval),
                                   job.id)
 
     def enqueue_jobs(self):
