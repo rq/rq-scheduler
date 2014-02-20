@@ -1,9 +1,9 @@
 import logging
 import signal
 import time
-import times
 import warnings
 
+import calendar
 from datetime import datetime, timedelta
 from itertools import repeat
 
@@ -15,6 +15,26 @@ from redis import WatchError
 
 
 logger = logging.getLogger(__name__)
+
+
+# utcnow, utcformat, and utcparse from rq.utils
+def utcnow():
+    return datetime.utcnow()
+
+
+def utcformat(dt):
+    return dt.strftime(u"%Y-%m-%dT%H:%M:%SZ")
+
+# from_unix from times.from_unix()
+def from_unix(string):
+    return datetime.utcfromtimestamp(float(string))
+
+
+# to_unix from times.to_unix()
+def to_unix(dt):
+    """Converts a datetime object to unixtime"""
+    return calendar.timegm(dt.utctimetuple())
+
 
 
 class Scheduler(object):
@@ -106,7 +126,7 @@ class Scheduler(object):
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
         self.connection._zadd(self.scheduled_jobs_key,
-                              times.to_unix(scheduled_time),
+                              to_unix(scheduled_time),
                               job.id)
         return job
 
@@ -114,11 +134,11 @@ class Scheduler(object):
         """
         Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
         The job's scheduled execution time will be calculated by adding the timedelta
-        to times.now().
+        to utcnow().
         """
         job = self._create_job(func, args=args, kwargs=kwargs)
         self.connection._zadd(self.scheduled_jobs_key,
-                              times.to_unix(times.now() + time_delta),
+                              to_unix(utcnow() + time_delta),
                               job.id)
         return job
 
@@ -152,7 +172,7 @@ class Scheduler(object):
             job.timeout = timeout
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
-                              times.to_unix(scheduled_time),
+                              to_unix(scheduled_time),
                               job.id)
         return job
 
@@ -197,7 +217,7 @@ class Scheduler(object):
                     pipe.watch(self.scheduled_jobs_key)
                     if pipe.zscore(self.scheduled_jobs_key, job.id) is None:
                         raise ValueError('Job not in scheduled jobs queue')
-                    pipe.zadd(self.scheduled_jobs_key, times.to_unix(date_time), job.id)
+                    pipe.zadd(self.scheduled_jobs_key, to_unix(date_time), job.id)
                     break
                 except WatchError:
                     # If job is still in the queue, retry otherwise job is already executed
@@ -216,14 +236,14 @@ class Scheduler(object):
         it's scheduled execution time is returned.
         """
         def epoch_to_datetime(epoch):
-            return times.to_universal(float(epoch))
-
+            return from_unix(float(epoch))
+        
         if until is None:
             until = "+inf"
         elif isinstance(until, datetime):
-            until = times.to_unix(until)
+            until = to_unix(until)
         elif isinstance(until, timedelta):
-            until = times.to_unix((times.now() + until))
+            until = to_unix((utcnow() + until))
         job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0,
                                                 until, withscores=with_times,
                                                 score_cast_func=epoch_to_datetime)
@@ -250,7 +270,7 @@ class Scheduler(object):
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
         """
-        return self.get_jobs(times.to_unix(times.now()), with_times=with_times)
+        return self.get_jobs(to_unix(utcnow()), with_times=with_times)
 
     def get_queue_for_job(self, job):
         """
@@ -272,7 +292,7 @@ class Scheduler(object):
         # If job is a repeated job, decrement counter
         if repeat:
             job.meta['repeat'] = int(repeat) - 1
-        job.enqueued_at = times.now()
+        job.enqueued_at = utcnow()
         job.save()
 
         queue = self.get_queue_for_job(job)
@@ -285,7 +305,7 @@ class Scheduler(object):
                 if job.meta['repeat'] == 0:
                     return
             self.connection._zadd(self.scheduled_jobs_key,
-                                  times.to_unix(times.now()) + int(interval),
+                                  to_unix(utcnow()) + int(interval),
                                   job.id)
 
     def enqueue_jobs(self):
