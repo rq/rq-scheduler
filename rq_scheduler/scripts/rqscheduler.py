@@ -10,11 +10,11 @@ from rq_scheduler.scheduler import Scheduler
 
 def main():
     parser = argparse.ArgumentParser(description='Runs RQ scheduler')
-    parser.add_argument('-H', '--host', default='localhost', help="Redis host")
-    parser.add_argument('-p', '--port', default=6379, type=int, help="Redis port number")
-    parser.add_argument('-d', '--db', default=0, type=int, help="Redis database")
-    parser.add_argument('-P', '--password', default=None, help="Redis password")
-    parser.add_argument('--url', '-u', default=None
+    parser.add_argument('-H', '--host', default=os.environ.get('REDIS_HOST', 'localhost'), help="Redis host")
+    parser.add_argument('-p', '--port', default=int(os.environ.get('REDIS_PORT', 6379)), type=int, help="Redis port number")
+    parser.add_argument('-d', '--db', default=int(os.environ.get('REDIS_DB', 0)), type=int, help="Redis database")
+    parser.add_argument('-P', '--password', default=os.environ.get('REDIS_PASSWORD'), help="Redis password")
+    parser.add_argument('--url', '-u', default=os.environ.get('REDIS_URL')
         , help='URL describing Redis connection details. \
             Overrides other connection arguments if supplied.')
     parser.add_argument('-i', '--interval', default=60, type=int
