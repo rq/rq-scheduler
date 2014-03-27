@@ -171,7 +171,7 @@ The script accepts these arguments:
 * ``-P`` or ``--password``: password to connect to Redis
 
 The arguments pull default values from environment variables with the
-same names but with a prefix of ``REDIS_``.
+same names but with a prefix of ``RQ_REDIS_``.
 
 
 Changelog
