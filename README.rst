@@ -177,6 +177,14 @@ same names but with a prefix of ``RQ_REDIS_``.
 Changelog
 =========
 
+Version 0.5.0
+-------------
+* IMPORTANT! Job timestamps are now stored and interpreted in UTC format.
+  If you have existing scheduled jobs, you should probably change their timestamp
+  to UTC before upgrading to 0.5.0. Thanks @michaelbrooks!
+* You can now configure Redis connection via environment variables. Thanks @malthe!
+* ``rqscheduler`` script now accepts ``--pid`` argument. Thanks @jsoncorwin!
+
 Version 0.4.0
 -------------
 
