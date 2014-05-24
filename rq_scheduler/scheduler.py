@@ -276,7 +276,7 @@ class Scheduler(object):
         job.save()
 
         queue = self.get_queue_for_job(job)
-        queue.push_job_id(job.id)
+        queue.enqueue_call(job.func, job.args, job.kwargs, job.timeout, job.result_ttl)
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
