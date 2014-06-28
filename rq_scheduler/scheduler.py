@@ -16,6 +16,7 @@ from .utils import from_unix, to_unix
 
 logger = logging.getLogger(__name__)
 
+print(logger.name)
 
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
@@ -293,6 +294,7 @@ class Scheduler(object):
         Move scheduled jobs into queues.
         """
         self.log.info('Checking for scheduled jobs...')
+        
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
