@@ -60,7 +60,7 @@ class Scheduler(object):
             """
             Register scheduler's death and exit.
             """
-            self.log.debug('Shutting down RQ scheduler...')
+            self.log.info('Shutting down RQ scheduler...')
             self.register_death()
             raise SystemExit()
 
@@ -292,6 +292,7 @@ class Scheduler(object):
         """
         Move scheduled jobs into queues.
         """
+        self.log.info('Checking for scheduled jobs...')
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
@@ -305,7 +306,7 @@ class Scheduler(object):
         Periodically check whether there's any job that should be put in the queue (score
         lower than current time).
         """
-        self.log.debug('Running RQ scheduler...')
+        self.log.info('Running RQ scheduler...')
         self.register_birth()
         self._install_signal_handlers()
         try:
