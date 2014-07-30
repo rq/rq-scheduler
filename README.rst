@@ -54,6 +54,11 @@ There are two ways you can schedule a job. The first is using RQ Scheduler's ``e
     scheduler.enqueue_at(datetime(2020, 1, 1, 3, 4), func, foo, bar=baz)
 
 
+If you want the job to run immediately, you can use ``enqueue_now``::
+
+    scheduler.enqueue_now(func, foo, bar=baz)
+
+
 The second way is using ``enqueue_in``. Instead of taking a ``datetime`` object,
 this method expects a ``timedelta`` and schedules the job to run at
 X seconds/minutes/hours/days/weeks later. For example, if we want to monitor how

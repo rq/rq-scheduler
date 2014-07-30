@@ -142,6 +142,27 @@ class TestScheduler(RQTestCase):
         queue = Queue.from_queue_key('rq:queue:{0}'.format(queue_name))
         self.assertIn(job, queue.jobs)
 
+    def test_enqueue_job_now(self):
+        """
+        When scheduled job is enqueued, make sure:
+        - Job is removed from the sorted set of scheduled jobs
+        - "enqueued_at" attribute is properly set
+        - Job appears in the right queue
+        """
+        queue_name = 'foo'
+        scheduler = Scheduler(connection=self.testconn, queue_name=queue_name)
+
+        job = scheduler.enqueue_now(say_hello)
+        self.scheduler.enqueue_job(job)
+        self.assertNotIn(job, tl(self.testconn.zrange(scheduler.scheduled_jobs_key, 0, 10)))
+        job = Job.fetch(job.id, connection=self.testconn)
+        self.assertTrue(job.enqueued_at is not None)
+        queue = scheduler.get_queue_for_job(job)
+        self.assertIn(job, queue.jobs)
+        queue = Queue.from_queue_key('rq:queue:{0}'.format(queue_name))
+        self.assertIn(job, queue.jobs)
+
+
     def test_job_membership(self):
         now = datetime.utcnow()
         job = self.scheduler.enqueue_at(now, say_hello)
