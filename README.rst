@@ -37,20 +37,19 @@ Scheduling a Job
 
 There are two ways you can schedule a job. The first is using RQ Scheduler's ``enqueue_at``::
 
-    from rq import use_connection
+    from redis import Redis
     from rq_scheduler import Scheduler
     from datetime import datetime
 
-    use_connection() # Use RQ's default Redis connection
-    scheduler = Scheduler() # Get a scheduler for the "default" queue
+    scheduler = Scheduler(connection=Redis()) # Get a scheduler for the "default" queue
 
     # Puts a job into the scheduler. The API is similar to RQ except that it
     # takes a datetime object as first argument. So for example to schedule a
     # job to run on Jan 1st 2020 we do:
     scheduler.enqueue_at(datetime(2020, 1, 1), func)
 
-    # Here's another example scheduling a job to run at a specific date and time,
-    # complete with args and kwargs
+    # Here's another example scheduling a job to run at a specific date and time (in UTC),
+    # complete with args and kwargs.
     scheduler.enqueue_at(datetime(2020, 1, 1, 3, 4), func, foo, bar=baz)
 
 
@@ -67,15 +66,6 @@ popular a tweet is a few times during the course of the day, we could do somethi
     scheduler.enqueue_in(timedelta(days=1), count_retweets, tweet_id)
 
 
-You can also explicitly pass in ``connection`` to use a different Redis server::
-
-    from redis import Redis
-    from rq_scheduler import Scheduler
-    from datetime import datetime
-
-    scheduler = Scheduler('default', connection=Redis('192.168.1.3', port=123))
-    scheduler.enqueue_at(datetime(2020, 01, 01, 1, 1), func)
-
 ------------------------
 Periodic & Repeated Jobs
 ------------------------
@@ -87,10 +77,10 @@ You can do this via the ``schedule`` method. Note that this feature needs
 This is how you do it::
 
     scheduler.schedule(
-        scheduled_time=datetime.now(), # Time for first execution
+        scheduled_time=datetime.now(), # Time for first execution, in UTC timezone
         func=func,                     # Function to be queued
         args=[arg1, arg2],             # Arguments passed into function when executed
-        kwargs={'foo': 'bar'},       # Keyword arguments passed into function when executed
+        kwargs={'foo': 'bar'},         # Keyword arguments passed into function when executed
         interval=60,                   # Time before the function is called again, in seconds
         repeat=10                      # Repeat this number of times (None means repeat forever)
     )
