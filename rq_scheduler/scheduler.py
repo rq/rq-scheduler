@@ -16,7 +16,6 @@ from .utils import from_unix, to_unix
 
 logger = logging.getLogger(__name__)
 
-print(logger.name)
 
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
