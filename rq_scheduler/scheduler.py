@@ -72,10 +72,6 @@ class Scheduler(object):
         """
         Creates an RQ job and saves it to Redis.
         """
-        if func.__module__ == '__main__':
-            raise ValueError(
-                    'Functions from the __main__ module cannot be processed '
-                    'by workers.')
         if args is None:
             args = ()
         if kwargs is None:
