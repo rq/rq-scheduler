@@ -276,6 +276,7 @@ class Scheduler(object):
         job.save()
 
         queue = self.get_queue_for_job(job)
+        self.connection.sadd(queue.redis_queues_keys, queue.key)
         queue.push_job_id(job.id)
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
