@@ -127,6 +127,7 @@ class TestScheduler(RQTestCase):
         - Job is removed from the sorted set of scheduled jobs
         - "enqueued_at" attribute is properly set
         - Job appears in the right queue
+        - Queue is recognized by rq's Queue.all()
         """
         now = datetime.utcnow()
         queue_name = 'foo'
@@ -141,6 +142,7 @@ class TestScheduler(RQTestCase):
         self.assertIn(job, queue.jobs)
         queue = Queue.from_queue_key('rq:queue:{0}'.format(queue_name))
         self.assertIn(job, queue.jobs)
+        self.assertIn(queue, Queue.all())
 
     def test_job_membership(self):
         now = datetime.utcnow()
