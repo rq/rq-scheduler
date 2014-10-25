@@ -40,7 +40,7 @@ class Scheduler(object):
             # Set scheduler key to expire a few seconds after polling interval
             # This way, the key will automatically expire if scheduler
             # quits unexpectedly
-            p.expire(key, self._interval + 10)
+            p.expire(key, int(self._interval) + 10)
             p.execute()
 
     def register_death(self):
@@ -296,7 +296,7 @@ class Scheduler(object):
             self.enqueue_job(job)
         
         # Refresh scheduler key's expiry
-        self.connection.expire(self.scheduler_key, self._interval + 10)
+        self.connection.expire(self.scheduler_key, int(self._interval) + 10)
         return jobs
 
     def run(self):
