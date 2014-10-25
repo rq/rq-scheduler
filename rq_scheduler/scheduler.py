@@ -68,7 +68,7 @@ class Scheduler(object):
         signal.signal(signal.SIGTERM, stop)
 
     def _create_job(self, func, args=None, kwargs=None, commit=True,
-                    result_ttl=None):
+                    result_ttl=None, depends_on=None):
         """
         Creates an RQ job and saves it to Redis.
         """
@@ -77,7 +77,7 @@ class Scheduler(object):
         if kwargs is None:
             kwargs = {}
         job = Job.create(func, args=args, connection=self.connection,
-                         kwargs=kwargs, result_ttl=result_ttl)
+                         kwargs=kwargs, result_ttl=result_ttl, depends_on=depends_on)
         job.origin = self.queue_name
         if commit:
             job.save()
@@ -129,7 +129,7 @@ class Scheduler(object):
                             interval=interval, repeat=repeat)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None, timeout=None):
+                interval=None, repeat=None, result_ttl=None, timeout=None, depends_on=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -137,7 +137,7 @@ class Scheduler(object):
         if interval is not None and result_ttl is None:
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=result_ttl)
+                               result_ttl=result_ttl, depends_on=depends_on)
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
@@ -293,8 +293,13 @@ class Scheduler(object):
         
         jobs = self.get_jobs_to_queue()
         for job in jobs:
-            self.enqueue_job(job)
-        
+            if job.dependency is None:  # if there is no dependency, then go ahead schedule it
+                self.enqueue_job(job)
+            else:  # if there is a dependency, then check if that job is done
+                parent_job = job.dependency
+                if parent_job.is_finished:
+                    self.enqueue_job(job)
+                
         # Refresh scheduler key's expiry
         self.connection.expire(self.scheduler_key, self._interval + 10)
         return jobs
