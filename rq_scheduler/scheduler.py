@@ -68,7 +68,7 @@ class Scheduler(object):
         signal.signal(signal.SIGTERM, stop)
 
     def _create_job(self, func, args=None, kwargs=None, commit=True,
-                    result_ttl=None):
+                    result_ttl=None, queue_name=None):
         """
         Creates an RQ job and saves it to Redis.
         """
@@ -78,7 +78,7 @@ class Scheduler(object):
             kwargs = {}
         job = Job.create(func, args=args, connection=self.connection,
                          kwargs=kwargs, result_ttl=result_ttl)
-        job.origin = self.queue_name
+        job.origin = queue_name or self.queue_name
         if commit:
             job.save()
         return job
@@ -129,7 +129,7 @@ class Scheduler(object):
                             interval=interval, repeat=repeat)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None, timeout=None):
+                interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -137,7 +137,7 @@ class Scheduler(object):
         if interval is not None and result_ttl is None:
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=result_ttl)
+                               result_ttl=result_ttl, queue_name=queue_name)
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
@@ -153,7 +153,7 @@ class Scheduler(object):
         return job
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None):
+                interval=None, repeat=None, result_ttl=None, queue_name=None):
         """
         This method is deprecated and only left in as a backwards compatibility
         alias for schedule().
@@ -161,7 +161,7 @@ class Scheduler(object):
         warnings.warn("'enqueue()' has been deprecated in favor of '.schedule()'"
                       "and will be removed in a future release.", DeprecationWarning)
         return self.schedule(scheduled_time, func, args, kwargs, interval,
-                             repeat, result_ttl)
+                             repeat, result_ttl, queue_name=queue_name)
 
     def cancel(self, job):
         """
