@@ -343,3 +343,43 @@ class TestScheduler(RQTestCase):
         # Fake __main__ module function
         dummy.__module__ = "__main__"
         self.assertRaises(ValueError, self.scheduler._create_job, dummy)
+
+    def test_small_float_interval(self):
+        """
+        Test that scheduler accepts 'interval' of type float, less than 1 second.
+        """
+        key = Scheduler.scheduler_key
+        self.assertNotIn(key, tl(self.testconn.keys('*')))
+        scheduler = Scheduler(connection=self.testconn, interval=0.1)   # testing interval = 0.1 second
+        self.assertEqual(scheduler._interval, 0.1)
+
+        #register birth
+        scheduler.register_birth()
+        self.assertIn(key, tl(self.testconn.keys('*')))
+        self.assertEqual(self.testconn.ttl(key), 10)  # int(0.1) + 10 = 10
+        self.assertFalse(self.testconn.hexists(key, 'death'))
+
+        #enqueue a job
+        now = datetime.utcnow()
+        job = scheduler.enqueue_at(now, say_hello)
+        self.assertIn(job, self.scheduler.get_jobs_to_queue())
+        self.assertEqual(len(self.scheduler.get_jobs()), 1)
+
+        #register death
+        scheduler.register_death()
+
+        #test that run works with the small floating-point interval
+        def send_stop_signal():
+            """
+            Sleep for 1 second, then send a INT signal to ourself, so the
+            signal handler installed by scheduler.run() is called.
+            """
+            time.sleep(1)
+            os.kill(os.getpid(), signal.SIGINT)
+        thread = Thread(target=send_stop_signal)
+        thread.start()
+        self.assertRaises(SystemExit, scheduler.run)
+        thread.join()
+
+        #all jobs must have been scheduled during 1 second
+        self.assertEqual(len(scheduler.get_jobs()), 0)

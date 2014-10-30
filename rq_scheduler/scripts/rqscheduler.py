@@ -20,9 +20,9 @@ def main():
     parser.add_argument('--url', '-u', default=os.environ.get('RQ_REDIS_URL')
         , help='URL describing Redis connection details. \
             Overrides other connection arguments if supplied.')
-    parser.add_argument('-i', '--interval', default=60, type=int
+    parser.add_argument('-i', '--interval', default=60.0, type=float
         , help="How often the scheduler checks for new jobs to add to the \
-            queue (in seconds).")
+            queue (in seconds, can be floating-point for more precision).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
     
