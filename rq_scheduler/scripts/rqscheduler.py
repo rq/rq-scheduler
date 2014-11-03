@@ -25,6 +25,8 @@ def main():
             queue (in seconds).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
+    help = 'Keep retrying to register scheduler if one already exists.'
+    parser.add_argument('--retry', action='store_true', help=help)
     
     args = parser.parse_args()
     
@@ -49,7 +51,7 @@ def main():
     setup_loghandlers(level)
 
     scheduler = Scheduler(connection=connection, interval=args.interval)
-    scheduler.run()
+    scheduler.run(retry=args.retry)
 
 if __name__ == '__main__':
     main()

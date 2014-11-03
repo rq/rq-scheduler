@@ -52,6 +52,20 @@ class TestScheduler(RQTestCase):
         scheduler.register_death()
         self.assertTrue(self.testconn.hexists(key, 'death'))
 
+    def test_birth_scheduler_already_active(self):
+        """
+        Verifies that multiple schedulers can be started and they can wait for
+        another to die before registering itself.
+        """
+        key = Scheduler.scheduler_key
+        self.assertNotIn(key, tl(self.testconn.keys('*')))
+        scheduler = Scheduler(connection=self.testconn, interval=20)
+        scheduler.register_birth()
+        scheduler.register_death()
+        retrying_scheduler = Scheduler(connection=self.testconn, interval=20)
+        retrying_scheduler.register_birth(retry=True)
+        retrying_scheduler.register_death()
+
     def test_create_job(self):
         """
         Ensure that jobs are created properly.
