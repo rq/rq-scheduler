@@ -16,8 +16,6 @@ from .utils import from_unix, to_unix
 
 logger = logging.getLogger(__name__)
 
-# dummy edit
-
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
@@ -69,7 +67,7 @@ class Scheduler(object):
         signal.signal(signal.SIGTERM, stop)
 
     def _create_job(self, func, args=None, kwargs=None, commit=True,
-                    result_ttl=None, queue_name=None):
+                    result_ttl=None, queue_name=None, timeout=None):
         """
         Creates an RQ job and saves it to Redis.
         """
@@ -78,13 +76,13 @@ class Scheduler(object):
         if kwargs is None:
             kwargs = {}
         job = Job.create(func, args=args, connection=self.connection,
-                         kwargs=kwargs, result_ttl=result_ttl)
+                         kwargs=kwargs, result_ttl=result_ttl, timeout=timeout)
         job.origin = queue_name or self.queue_name
         if commit:
             job.save()
         return job
 
-    def enqueue_at(self, scheduled_time, func, *args, **kwargs):
+    def enqueue_at(self, scheduled_time, func, timeout=None, *args, **kwargs):
         """
         Pushes a job to the scheduler queue. The scheduled queue is a Redis sorted
         set ordered by timestamp - which in this case is job's scheduled execution time.
@@ -101,25 +99,25 @@ class Scheduler(object):
         scheduler = Scheduler(queue_name='default', connection=redis)
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
-        job = self._create_job(func, args=args, kwargs=kwargs)
+        job = self._create_job(func, timeout=timeout, args=args, kwargs=kwargs)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
         return job
 
-    def enqueue_in(self, time_delta, func, *args, **kwargs):
+    def enqueue_in(self, time_delta, func, timeout=None, *args, **kwargs):
         """
         Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
         The job's scheduled execution time will be calculated by adding the timedelta
         to datetime.utcnow().
         """
-        job = self._create_job(func, args=args, kwargs=kwargs)
+        job = self._create_job(func, timeout=timeout, args=args, kwargs=kwargs)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
         return job
 
-    def enqueue_periodic(self, scheduled_time, interval, repeat, func,
+    def enqueue_periodic(self, scheduled_time, interval, repeat, func, timeout=None,
                          *args, **kwargs):
         """
         Schedule a job to be periodically executed, at a certain interval.
@@ -127,7 +125,7 @@ class Scheduler(object):
         warnings.warn("'enqueue_periodic()' has been deprecated in favor of '.schedule()'"
                       "and will be removed in a future release.", DeprecationWarning)
         return self.schedule(scheduled_time, func, args=args, kwargs=kwargs,
-                            interval=interval, repeat=repeat)
+                            interval=interval, repeat=repeat, timeout=timeout)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
                 interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
@@ -138,15 +136,13 @@ class Scheduler(object):
         if interval is not None and result_ttl is None:
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=result_ttl, queue_name=queue_name)
+                               result_ttl=result_ttl, queue_name=queue_name, timeout=timeout)
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
-        if timeout is not None:
-            job.timeout = timeout
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
@@ -154,7 +150,7 @@ class Scheduler(object):
         return job
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None, queue_name=None):
+                interval=None, repeat=None, result_ttl=None, queue_name=None, timeout=None):
         """
         This method is deprecated and only left in as a backwards compatibility
         alias for schedule().
@@ -162,7 +158,7 @@ class Scheduler(object):
         warnings.warn("'enqueue()' has been deprecated in favor of '.schedule()'"
                       "and will be removed in a future release.", DeprecationWarning)
         return self.schedule(scheduled_time, func, args, kwargs, interval,
-                             repeat, result_ttl, queue_name=queue_name)
+                             repeat, result_ttl, queue_name=queue_name, timeout=timeout)
 
     def cancel(self, job):
         """
