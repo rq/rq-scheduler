@@ -1,2 +1,2 @@
 test:
-	./run-tests.sh
+	./run_tests.py
