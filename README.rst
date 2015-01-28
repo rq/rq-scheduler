@@ -6,6 +6,9 @@ RQ Scheduler
 adds job scheduling capabilities to `RQ <https://github.com/nvie/rq>`_,
 a `Redis <http://redis.io/>`_ based Python queuing library.
 
+.. image:: https://travis-ci.org/ui/rq-scheduler.svg?branch=master
+    :target: https://travis-ci.org/ui/rq-scheduler
+
 ============
 Requirements
 ============
