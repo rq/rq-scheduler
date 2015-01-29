@@ -47,6 +47,21 @@ class RQTestCase(unittest.TestCase):
         def assertIsNotNone(self, value, *args):
             self.assertNotEqual(value, None, *args)
 
+    # Implement assertIn for Python runtimes < 2.7 or < 3.1
+    if not hasattr(unittest.TestCase, 'assertIn'):
+        def assertIn(self, first, second, msg=None):
+            self.assertTrue(first in second, msg=msg)
+
+    # Implement assertNotIn for Python runtimes < 2.7 or < 3.1
+    if not hasattr(unittest.TestCase, 'assertNotIn'):
+        def assertNotIn(self, first, second, msg=None):
+            self.assertTrue(first not in second, msg=msg)
+
+    # Implement assertIsInstance for Python runtimes < 2.7 or < 3.1
+    if not hasattr(unittest.TestCase, 'assertIsInstance'):
+        def assertIsInstance(self, obj, cls, msg=None):
+            self.assertTrue(isinstance(obj, cls), msg=msg)
+
     @classmethod
     def tearDownClass(cls):
 
@@ -54,3 +69,7 @@ class RQTestCase(unittest.TestCase):
         testconn = pop_connection()
         assert testconn == cls.testconn, 'Wow, something really nasty ' \
                 'happened to the Redis connection stack. Check your setup.'
+
+# for python < 2.7, which doesn't have setUpClass
+if not hasattr(unittest.TestCase, 'setUpClass'):
+    RQTestCase.setUpClass()

@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup
+import platform
+
+tests_require = []
+if platform.python_version() < '2.7':
+    tests_require.append('discover==0.4.0')
 
 setup(
     name='rq-scheduler',
@@ -18,7 +23,8 @@ setup(
     rqscheduler = rq_scheduler.scripts.rqscheduler:main
     ''',
     package_data = { '': ['README.rst'] },
-    install_requires=['rq>=0.3.5'],
+    tests_require=tests_require,
+    install_requires=['rq>=0.3.5'] + tests_require,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',

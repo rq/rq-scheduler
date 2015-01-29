@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import platform
 from subprocess import Popen, PIPE, STDOUT
 
 def main():
@@ -8,9 +9,10 @@ def main():
         raise RuntimeError("Redis server is not running.")
 
     pipe = "rg" if Popen(['which', 'rg'], stdout=PIPE).wait() == 0 else "cat"
+    module = "discover" if platform.python_version() < '2.7' else 'unittest discover'
 
     #run tests and gather output
-    p = Popen("/usr/bin/env python -m unittest discover -v -s tests %s" % " ".join(sys.argv[1:]), shell=True, stdout=PIPE, stderr=STDOUT)
+    p = Popen("/usr/bin/env python -m %s -v -s tests %s" % (module, " ".join(sys.argv[1:])), shell=True, stdout=PIPE, stderr=STDOUT)
     exit_code = p.wait()
     (out, _) = p.communicate()
 
