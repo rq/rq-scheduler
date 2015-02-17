@@ -170,6 +170,17 @@ same names but with a prefix of ``RQ_REDIS_``.
 Changelog
 =========
 
+Version 0.5.1
+-------------
+* Travis CI fixes. Thanks Steven Kryskalla!
+* Modified default logging configuration. You can pass in the ``-v`` or ``--verbose`` argument
+  to ``rqscheduler`` script for more verbose logging.
+* RQ Scheduler now registers Queue name when a new job is scheduled. Thanks @alejandrodob !
+* You can now schedule jobs with string references like ``scheduler.schedule(scheduled_time=now, func='foo.bar')``.
+  Thanks @SirScott !
+* ``rqscheduler`` script now accepts floating point intervals. Thanks Alexander Pikovsky!
+
+
 Version 0.5.0
 -------------
 * IMPORTANT! Job timestamps are now stored and interpreted in UTC format.
