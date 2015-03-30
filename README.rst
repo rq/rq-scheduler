@@ -88,6 +88,10 @@ This is how you do it::
         repeat=10                      # Repeat this number of times (None means repeat forever)
     )
 
+**IMPORTANT NOTE**: If you set up a repeated job, you must make sure that you
+either do not set a `result_ttl` value or you set a value larger than the interval.
+Otherwise, the entry with the job details will expire and the job will not get re-scheduled.
+
 -------------------------
 Retrieving scheduled jobs
 -------------------------
