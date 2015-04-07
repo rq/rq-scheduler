@@ -8,7 +8,7 @@ def find_empty_redis_database():
     will use/connect it when no keys are in there.
     """
     for dbnum in range(4, 17):
-        testconn = StrictRedis(db=dbnum)
+        testconn = StrictRedis(host="127.0.0.1", db=dbnum)
         empty = len(testconn.keys('*')) == 0
         if empty:
             return testconn

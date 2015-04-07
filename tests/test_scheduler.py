@@ -180,22 +180,24 @@ class TestScheduler(RQTestCase):
         """
         Ensure that arguments and keyword arguments are properly saved to jobs.
         """
-        job = self.scheduler.enqueue_at(datetime.utcnow(), simple_addition, 1, 1, 1)
+        job = self.scheduler.enqueue_at(datetime.utcnow(), simple_addition, 0, 1, 1, 1)
         self.assertEqual(job.args, (1, 1, 1))
         job = self.scheduler.enqueue_at(datetime.utcnow(), simple_addition, z=1, y=1, x=1)
         self.assertEqual(job.kwargs, {'x': 1, 'y': 1, 'z': 1})
-        job = self.scheduler.enqueue_at(datetime.utcnow(), simple_addition, 1, z=1, y=1)
+        job = self.scheduler.enqueue_at(datetime.utcnow(), simple_addition, 0, 1, z=1, y=1)
         self.assertEqual(job.kwargs, {'y': 1, 'z': 1})
         self.assertEqual(job.args, (1,))
 
         time_delta = timedelta(minutes=1)
-        job = self.scheduler.enqueue_in(time_delta, simple_addition, 1, 1, 1)
+        job = self.scheduler.enqueue_in(time_delta, simple_addition, 0, 1, 1, 1)
         self.assertEqual(job.args, (1, 1, 1))
         job = self.scheduler.enqueue_in(time_delta, simple_addition, z=1, y=1, x=1)
         self.assertEqual(job.kwargs, {'x': 1, 'y': 1, 'z': 1})
-        job = self.scheduler.enqueue_in(time_delta, simple_addition, 1, z=1, y=1)
+        job = self.scheduler.enqueue_in(time_delta, simple_addition, 0, 1, z=1, y=1)
         self.assertEqual(job.kwargs, {'y': 1, 'z': 1})
         self.assertEqual(job.args, (1,))
+        job = self.scheduler.enqueue_in(time_delta, simple_addition, timeout=0, z=1, y=1, x=1)
+        self.assertEqual(job.kwargs, {'x': 1, 'y': 1, 'z': 1})
 
     def test_enqueue_is_deprecated(self):
         """
