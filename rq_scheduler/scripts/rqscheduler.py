@@ -40,6 +40,10 @@ def main():
         rq_config = helpers.read_config_file( args.config )
         # map rq settings to our own config dict
         config[KEY_URL] = rq_config["REDIS_URL"] or config[KEY_URL]
+        config[KEY_HOST] = rq_config["REDIS_HOST"] or config[KEY_HOST]
+        config[KEY_PORT] = rq_config["REDIS_PORT"] or config[KEY_PORT]
+        config[KEY_DB] = rq_config["REDIS_DB"] or config[KEY_DB]
+        config[KEY_PASSWORD] = rq_config["REDIS_PASSWORD"] or config[KEY_PASSWORD]
 
     # config, pass 3: read commandline args. overwrites any other config.
     parser = argparse.ArgumentParser(
