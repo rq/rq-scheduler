@@ -37,14 +37,15 @@ def main():
 
     # config, pass 2: read config file
     if args.config:
+        # bit of a hack, this, but does allow helpers.read_config_file to work...
         sys.path.append( os.path.dirname(os.path.realpath(args.config)) )
         rq_config = helpers.read_config_file( args.config )
         # map rq settings to our own config dict
-        config[KEY_URL] = rq_config["REDIS_URL"] or config[KEY_URL]
-        config[KEY_HOST] = rq_config["REDIS_HOST"] or config[KEY_HOST]
-        config[KEY_PORT] = rq_config["REDIS_PORT"] or config[KEY_PORT]
-        config[KEY_DB] = rq_config["REDIS_DB"] or config[KEY_DB]
-        config[KEY_PASSWORD] = rq_config["REDIS_PASSWORD"] or config[KEY_PASSWORD]
+        config[KEY_URL] = rq_config.get("REDIS_URL", config[KEY_URL])
+        config[KEY_HOST] = rq_config.get("REDIS_HOST", config[KEY_HOST])
+        config[KEY_PORT] = rq_config.get("REDIS_PORT", config[KEY_PORT])
+        config[KEY_DB] = rq_config.get("REDIS_DB", config[KEY_DB])
+        config[KEY_PASSWORD] = rq_config.get("REDIS_PASSWORD",config[KEY_PASSWORD])
 
     # config, pass 3: read commandline args. overwrites any other config.
     parser = argparse.ArgumentParser(
