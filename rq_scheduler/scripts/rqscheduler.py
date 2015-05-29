@@ -37,6 +37,7 @@ def main():
 
     # config, pass 2: read config file
     if args.config:
+        sys.path.append( os.path.dirname(os.path.realpath(args.config)) )
         rq_config = helpers.read_config_file( args.config )
         # map rq settings to our own config dict
         config[KEY_URL] = rq_config["REDIS_URL"] or config[KEY_URL]
