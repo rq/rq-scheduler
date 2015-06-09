@@ -1,4 +1,6 @@
 import calendar
+import croniter
+
 from datetime import datetime
 
 # from_unix from times.from_unix()
@@ -11,3 +13,12 @@ def from_unix(string):
 def to_unix(dt):
     """Converts a datetime object to unixtime"""
     return calendar.timegm(dt.utctimetuple())
+
+def crontab_get_next_scheduled_time(crontab_string):
+    """Calculate the next scheduled time by creating a crontab object
+    with a crontab string and getting the next time"""
+    try:
+        job = croniter.croniter(crontab_string, datetime.utcnow())
+        return job.get_next(datetime)
+    except Exception:
+        raise ValueError("'%s' is an incorrect crontab" %crontab_string)
