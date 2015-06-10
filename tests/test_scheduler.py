@@ -10,7 +10,7 @@ from rq.compat import as_text
 from rq.job import Job
 import warnings
 from rq_scheduler import Scheduler
-from rq_scheduler.utils import to_unix
+from rq_scheduler.utils import to_unix, from_unix
 
 from tests import RQTestCase
 
@@ -232,9 +232,19 @@ class TestScheduler(RQTestCase):
         """
         Ensure that crontab attribute gets correctly saved in Redis.
         """
+        # create a job that runs one minute past each whole hour
         job = self.scheduler.schedule("1 * * * *", say_hello)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_from_queue.meta['crontab'], "1 * * * *")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - datetime.utcnow() < timedelta(hours=1)
 
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval

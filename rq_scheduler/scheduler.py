@@ -129,7 +129,7 @@ class Scheduler(object):
                             interval=interval, repeat=repeat)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                 interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
+                interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -150,7 +150,6 @@ class Scheduler(object):
             raise ValueError("Can't repeat a job without interval argument")
         if timeout is not None:
             job.timeout = timeout
-
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
