@@ -11,6 +11,4 @@ install:
 
 script: make test
 
-services:
-  - redis
-  - croniter
+services: redis
