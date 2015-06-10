@@ -33,12 +33,12 @@ class TestScheduler(RQTestCase):
     def setUp(self):
         super(TestScheduler, self).setUp()
         self.scheduler = Scheduler(connection=self.testconn)
-    
+
     def test_birth_and_death_registration(self):
         """
         When scheduler registers it's birth, besides creating a key, it should
         also set an expiry that's a few seconds longer than it's polling
-        interval so it automatically expires if scheduler is unexpectedly 
+        interval so it automatically expires if scheduler is unexpectedly
         terminated.
         """
         key = Scheduler.scheduler_key
@@ -109,7 +109,7 @@ class TestScheduler(RQTestCase):
         self.assertIn(job, [j[0] for j in self.scheduler.get_jobs(with_times=True)])
         self.assertIsInstance(self.scheduler.get_jobs(with_times=True)[0][1], datetime)
         self.assertNotIn(job, self.scheduler.get_jobs(timedelta(minutes=59, seconds=59)))
-    
+
     def test_get_jobs_to_queue(self):
         """
         Ensure that jobs scheduled the future are not queued.
@@ -227,6 +227,14 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_from_queue.meta['interval'], 10)
         self.assertEqual(job_from_queue.meta['repeat'], 11)
+
+    def test_crontab_persisted_correctly(self):
+        """
+        Ensure that crontab attribute gets correctly saved in Redis.
+        """
+        job = self.scheduler.schedule("1 * * * *", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['crontab'], "1 * * * *")
 
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval

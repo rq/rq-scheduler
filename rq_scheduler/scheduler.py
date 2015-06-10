@@ -128,9 +128,8 @@ class Scheduler(object):
         return self.schedule(scheduled_time, func, args=args, kwargs=kwargs,
                             interval=interval, repeat=repeat)
 
-    def schedule(self, func, args=None, kwargs=None,
-                 scheduled_time=None, interval=None, repeat=None,
-                 result_ttl=None, timeout=None, queue_name=None, crontab=None):
+    def schedule(self, scheduled_time, func, args=None, kwargs=None,
+                 interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -139,6 +138,10 @@ class Scheduler(object):
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, queue_name=queue_name)
+
+        if isinstance(scheduled_time, str):
+            job.meta['crontab'] = scheduled_time
+            scheduled_time = crontab_get_next_scheduled_time(scheduled_time)
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
@@ -147,11 +150,6 @@ class Scheduler(object):
             raise ValueError("Can't repeat a job without interval argument")
         if timeout is not None:
             job.timeout = timeout
-        if crontab is not None:
-            job.meta['crontab'] = crontab
-            scheduled_time = crontab_get_next_scheduled_time(crontab)
-        if not scheduled_time:
-            raise ValueError("Give either the scheduled time or a crontab")
 
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
