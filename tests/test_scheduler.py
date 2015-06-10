@@ -246,6 +246,10 @@ class TestScheduler(RQTestCase):
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
 
+    def test_crontab_start_date_in_future_persisted_correctly(self):
+        #TODO
+        pass
+
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval
         def create_job():
@@ -272,6 +276,12 @@ class TestScheduler(RQTestCase):
             tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(time_now) + interval)
+
+    def test_job_with_crontab_get_rescheduled(self):
+        #TODO
+        pass
+
+    def test_job_with
 
     def test_job_with_repeat(self):
         """

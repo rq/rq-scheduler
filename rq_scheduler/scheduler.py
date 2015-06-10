@@ -129,7 +129,8 @@ class Scheduler(object):
                             interval=interval, repeat=repeat)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
+                interval=None, repeat=None, result_ttl=None, timeout=None,
+                queue_name=None, crontab_start=datetime.utcnow() ):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -141,7 +142,9 @@ class Scheduler(object):
 
         if isinstance(scheduled_time, str):
             job.meta['crontab'] = scheduled_time
-            scheduled_time = crontab_get_next_scheduled_time(scheduled_time)
+            job.meta['crontab_start'] = crontab_start
+            scheduled_time = crontab_get_next_scheduled_time(scheduled_time,
+                                                             crontab_start)
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
