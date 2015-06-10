@@ -281,8 +281,6 @@ class TestScheduler(RQTestCase):
         #TODO
         pass
 
-    def test_job_with
-
     def test_job_with_repeat(self):
         """
         Ensure jobs with repeat attribute are put back in the scheduler
