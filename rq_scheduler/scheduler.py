@@ -129,8 +129,7 @@ class Scheduler(object):
                             interval=interval, repeat=repeat)
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None, timeout=None,
-                queue_name=None, crontab_start=datetime.utcnow() ):
+                interval=None, repeat=None, result_ttl=None, timeout=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -140,11 +139,6 @@ class Scheduler(object):
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, queue_name=queue_name)
 
-        if isinstance(scheduled_time, str):
-            job.meta['crontab'] = scheduled_time
-            job.meta['crontab_start'] = crontab_start
-            scheduled_time = crontab_get_next_scheduled_time(scheduled_time,
-                                                             crontab_start)
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
@@ -158,6 +152,27 @@ class Scheduler(object):
                               to_unix(scheduled_time),
                               job.id)
         return job
+
+
+    def cron(self, crontab_string, func, args=None, kwargs=None,
+             queue_name=None, crontab_start=datetime.utcnow()):
+        """
+        Schedule a cronjob
+        """
+        # Set result_ttl to -1 for periodic jobs, if result_ttl not specified
+        job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
+                               result_ttl=None, queue_name=queue_name)
+
+        job.meta['crontab'] = crontab_string
+        job.meta['crontab_start'] = crontab_start
+        scheduled_time = crontab_get_next_scheduled_time(crontab_string,
+                                                         crontab_start)
+        job.save()
+        self.connection._zadd(self.scheduled_jobs_key,
+                              to_unix(scheduled_time),
+                              job.id)
+        return job)
+
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
                 interval=None, repeat=None, result_ttl=None, queue_name=None):

@@ -233,7 +233,7 @@ class TestScheduler(RQTestCase):
         Ensure that crontab attribute gets correctly saved in Redis.
         """
         # create a job that runs one minute past each whole hour
-        job = self.scheduler.schedule("1 * * * *", say_hello)
+        job = self.scheduler.cron("1 * * * *", say_hello)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_from_queue.meta['crontab'], "1 * * * *")
 
