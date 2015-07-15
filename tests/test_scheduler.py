@@ -274,12 +274,11 @@ class TestScheduler(RQTestCase):
                          to_unix(time_now) + interval)
 
     def test_job_with_crontab_get_rescheduled(self):
-        #TODO
         # Create a job with a cronjob_string
         job = self.scheduler.cron("1 * * * *", say_hello)
 
         # current unix_time
-        current_next_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        old_next_scheduled_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
 
         # change crontab
         job.meta['crontab'] = "2 * * * *"
@@ -290,10 +289,14 @@ class TestScheduler(RQTestCase):
         self.assertIn(job.id,
             tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
-        # check that new next scheduled time is set
-        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
-                         to_unix(crontab_get_next_scheduled_time("2 * * * *")))
+        # check that next scheduled time has changed
+        self.assertNotEqual(old_next_scheduled_time,
+                            self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id))
 
+        # check that new next scheduled time is set correctly
+        expected_next_scheduled_time = to_unix(crontab_get_next_scheduled_time("2 * * * *"))
+        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
+                         expected_next_scheduled_time)
 
     def test_job_with_repeat(self):
         """

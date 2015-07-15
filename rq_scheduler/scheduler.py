@@ -158,7 +158,6 @@ class Scheduler(object):
         """
         Schedule a cronjob
         """
-        # Set result_ttl to -1 for periodic jobs, if result_ttl not specified
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=None, queue_name=queue_name)
 
