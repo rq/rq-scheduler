@@ -154,8 +154,7 @@ class Scheduler(object):
         return job
 
 
-    def cron(self, crontab_string, func, args=None, kwargs=None,
-             queue_name=None, crontab_start=datetime.utcnow()):
+    def cron(self, crontab_string, func, args=None, kwargs=None, queue_name=None):
         """
         Schedule a cronjob
         """
@@ -164,9 +163,8 @@ class Scheduler(object):
                                result_ttl=None, queue_name=queue_name)
 
         job.meta['crontab'] = crontab_string
-        job.meta['crontab_start'] = crontab_start
-        scheduled_time = crontab_get_next_scheduled_time(crontab_string,
-                                                         crontab_start)
+
+        scheduled_time = crontab_get_next_scheduled_time(crontab_string)
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
