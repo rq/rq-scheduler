@@ -292,7 +292,7 @@ class TestScheduler(RQTestCase):
 
         # check that new next scheduled time is set
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
-                         to_unix(crontab_get_next_scheduled_time("2 * * * *"))
+                         to_unix(crontab_get_next_scheduled_time("2 * * * *")))
 
 
     def test_job_with_repeat(self):
