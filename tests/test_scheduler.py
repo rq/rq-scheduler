@@ -248,7 +248,7 @@ class TestScheduler(RQTestCase):
 
     def test_crontab_start_date_in_future_persisted_correctly(self):
         # create a job that runs one minute past each whole hour, starting in 1 day
-        start_time = datetime.utcnow() + datetime.timedelta(days=1)
+        start_time = datetime.utcnow() + timedelta(days=1)
         job = self.scheduler.cron("1 * * * *", say_hello,
                                   crontab_start=start_time)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
