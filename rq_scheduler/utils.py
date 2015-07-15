@@ -17,5 +17,5 @@ def to_unix(dt):
 def crontab_get_next_scheduled_time(crontab_string):
     """Calculate the next scheduled time by creating a crontab object
     with a crontab string"""
-    job = croniter.croniter(crontab_string)
+    job = croniter.croniter(crontab_string, datetime.utcnow())
     return job.get_next(datetime)
