@@ -171,7 +171,7 @@ class Scheduler(object):
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
-        return job)
+        return job
 
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
