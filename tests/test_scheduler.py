@@ -10,7 +10,7 @@ from rq.compat import as_text
 from rq.job import Job
 import warnings
 from rq_scheduler import Scheduler
-from rq_scheduler.utils import to_unix, from_unix
+from rq_scheduler.utils import to_unix, from_unix, crontab_get_next_scheduled_time
 
 from tests import RQTestCase
 
@@ -275,7 +275,25 @@ class TestScheduler(RQTestCase):
 
     def test_job_with_crontab_get_rescheduled(self):
         #TODO
-        pass
+        # Create a job with a cronjob_string
+        job = self.scheduler.cron("1 * * * *", say_hello)
+
+        # current unix_time
+        current_next_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+
+        # change crontab
+        job.meta['crontab'] = "2 * * * *"
+
+        # enqueue the job
+        self.scheduler.enqueue_job(job)
+
+        self.assertIn(job.id,
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+
+        # check that new next scheduled time is set
+        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
+                         to_unix(crontab_get_next_scheduled_time("2 * * * *"))
+
 
     def test_job_with_repeat(self):
         """
