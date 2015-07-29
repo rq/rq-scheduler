@@ -25,6 +25,12 @@ def main():
             queue (in seconds, can be floating-point for more precision).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
+
+    # add options when rq_scheduler exited unexpectedly, and when it restarts again later, to check the stale jobs not
+    # to be executed automatically, and move them to stale queue
+    parser.add_argument('--max-stale-hours', default=None, type=float,
+                        help='A float, max stale hours that make recent past or future scheduled jobs marked as stale')
+    parser.add_argument('--stale-queue-name', default='stale', help='The queue name stored all the stale jobs')
     
     args = parser.parse_args()
     
@@ -48,7 +54,7 @@ def main():
         level = 'INFO'
     setup_loghandlers(level)
 
-    scheduler = Scheduler(connection=connection, interval=args.interval)
+    scheduler = Scheduler(connection=connection, interval=args.interval, max_stale_hours=args.max-stale-hours, stale_queue_name=args.stale-queue-name)
     scheduler.run()
 
 if __name__ == '__main__':
