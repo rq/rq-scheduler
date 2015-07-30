@@ -28,10 +28,16 @@ class Scheduler(object):
         self._interval = interval
         self.log = logger
 
-    def register_birth(self):
-        if self.connection.exists(self.scheduler_key) and \
-                not self.connection.hexists(self.scheduler_key, 'death'):
-            raise ValueError("There's already an active RQ scheduler")
+    def register_birth(self, retry=False):
+        while True:
+            if self.connection.exists(self.scheduler_key) and \
+                    not self.connection.hexists(self.scheduler_key, 'death'):
+                if not retry:
+                    raise ValueError("There's already an active RQ scheduler")
+                self.log.info('RQ scheduler already active...')
+                time.sleep(self._interval)
+            else:
+                break
         key = self.scheduler_key
         now = time.time()
         with self.connection._pipeline() as p:
@@ -299,13 +305,13 @@ class Scheduler(object):
         self.connection.expire(self.scheduler_key, int(self._interval) + 10)
         return jobs
 
-    def run(self):
+    def run(self, retry=False):
         """
         Periodically check whether there's any job that should be put in the queue (score
         lower than current time).
         """
         self.log.info('Running RQ scheduler...')
-        self.register_birth()
+        self.register_birth(retry=retry)
         self._install_signal_handlers()
         try:
             while True:
