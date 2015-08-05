@@ -373,3 +373,62 @@ class TestScheduler(RQTestCase):
 
         #all jobs must have been scheduled during 1 second
         self.assertEqual(len(scheduler.get_jobs()), 0)
+
+    def test_check_stale_job(self):
+        """
+        Test check stale jobs works
+        - create stale jobs
+        - check them removed from scheduler
+        - check them moved into stale queue
+        """
+        # 3 stale jobs
+        stale_scheduled_time = datetime.utcnow() - timedelta(hours=3)
+        stale_job_1 = self.scheduler.enqueue_at(stale_scheduled_time, say_hello)
+        stale_scheduled_time = datetime.utcnow() - timedelta(hours=4)
+        stale_job_2 = self.scheduler.enqueue_at(stale_scheduled_time, say_hello)
+        stale_scheduled_time = datetime.utcnow() - timedelta(hours=5)
+        stale_job_3 = self.scheduler.enqueue_at(stale_scheduled_time, say_hello)
+
+        # 2 normal jobs
+        scheduled_time = datetime.utcnow() + timedelta(hours=1)
+        job_1 = self.scheduler.enqueue_at(scheduled_time, say_hello)
+        scheduled_time = datetime.utcnow() + timedelta(hours=2)
+        job_2 = self.scheduler.enqueue_at(scheduled_time, say_hello)
+
+        # now number of all jobs should be 5
+        jobs = self.scheduler.get_jobs()
+        self.assertEqual(len(jobs), 5)
+
+        # execute check_stale_job
+        self.scheduler._check_stale_jobs()
+        jobs = self.scheduler.get_jobs()
+        # default is not to check stale job
+        self.assertEqual(len(jobs), 5)
+
+        # set max stale hours < 0, means to handle past jobs
+        self.scheduler.max_stale_hours = -2
+        self.scheduler._check_stale_jobs()
+        # should be just 2
+        jobs = self.scheduler.get_jobs()
+        self.assertEqual(len(jobs), 2)
+        # check stale job origin
+        stale_job_1 = Job.fetch(stale_job_1.id, connection=self.testconn)
+        stale_job_2 = Job.fetch(stale_job_2.id, connection=self.testconn)
+        stale_job_3 = Job.fetch(stale_job_3.id, connection=self.testconn)
+        job_1 = Job.fetch(job_1.id, connection=self.testconn)
+        job_2 = Job.fetch(job_2.id, connection=self.testconn)
+
+        self.assertEqual(stale_job_1.origin, self.scheduler.stale_queue_name)
+        self.assertEqual(stale_job_2.origin, self.scheduler.stale_queue_name)
+        self.assertEqual(stale_job_3.origin, self.scheduler.stale_queue_name)
+        self.assertEqual(job_1.origin, self.scheduler.queue_name)
+        self.assertEqual(job_2.origin, self.scheduler.queue_name)
+
+        # check stale queue status
+        stale_queue = self.scheduler._get_queue_by_name(self.scheduler.stale_queue_name)
+        stale_job_ids = stale_queue.get_job_ids()
+        self.assertIn(stale_job_1.id, stale_job_ids)
+        self.assertIn(stale_job_2.id, stale_job_ids)
+        self.assertIn(stale_job_3.id, stale_job_ids)
+        self.assertNotIn(job_1.id, stale_job_ids)
+        self.assertNotIn(job_2.id, stale_job_ids)

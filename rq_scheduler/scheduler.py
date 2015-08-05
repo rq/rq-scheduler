@@ -21,12 +21,14 @@ class Scheduler(object):
     scheduler_key = 'rq:scheduler'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
 
-    def __init__(self, queue_name='default', interval=60, connection=None):
+    def __init__(self, queue_name='default', interval=60, connection=None, stale_queue_name='stale', max_stale_hours=None):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self.queue_name = queue_name
         self._interval = interval
         self.log = logger
+        self.stale_queue_name = stale_queue_name
+        self.max_stale_hours = max_stale_hours
 
     def register_birth(self):
         if self.connection.exists(self.scheduler_key) and \
@@ -82,6 +84,57 @@ class Scheduler(object):
         if commit:
             job.save()
         return job
+
+    def _check_stale_jobs(self, now=None):
+        """
+        Check stale jobs with max_stale_hours value, and when find stale jobs, to
+        move to stale_queue and not to execute them
+        """
+
+        # when self.max_stale_hours is None, means not to check stale jobs
+        if self.max_stale_hours is None:
+            return
+
+        if now is None:
+            now = datetime.now()
+
+        # when self.max_stale_hours >= 0, means to mark now or future jobs to be stale
+        # when self.max_stale_hours < 0, means to mark past jobs to be stale
+        stale_at = to_unix(now + timedelta(hours=self.max_stale_hours))
+
+        stale_job_ids = self.connection.zrangebyscore(
+            self.scheduled_jobs_key,
+            0,
+            stale_at,
+            score_cast_func=self._epoch_to_datetime
+        )
+
+        if not stale_job_ids:
+            # if no stale job, just return
+            return
+
+        # create a new queue for storing staled job
+        stale_queue = self._get_queue_by_name(self.stale_queue_name)
+        # store stale queue into global queues set
+        self.connection.sadd(stale_queue.redis_queues_keys, stale_queue.key)
+
+        for job_id in stale_job_ids:
+            job_id = job_id.decode('utf-8')
+            try:
+                # update job info
+                job = Job.fetch(job_id, connection=self.connection)
+                job.origin = self.stale_queue_name
+                job.save()
+
+                # push into stale queue
+                stale_queue.push_job_id(job_id)
+
+                # remove job id from scheduler
+                self.connection.zrem(self.scheduled_jobs_key, job_id)
+            except NoSuchJobError:
+                logging.error('Move job {} to stale queue error'.format(job.id))
+                # Delete jobs that aren't there from scheduler
+                self.cancel(job_id)
 
     def enqueue_at(self, scheduled_time, func, *args, **kwargs):
         """
@@ -202,6 +255,13 @@ class Scheduler(object):
                         raise ValueError('Job not in scheduled jobs queue')
                     continue
 
+    @staticmethod
+    def _epoch_to_datetime(epoch):
+        """
+        Returns utc datetime from epoch value
+        """
+        return from_unix(float(epoch))
+
     def get_jobs(self, until=None, with_times=False):
         """
         Returns a list of job instances that will be queued until the given time.
@@ -211,8 +271,7 @@ class Scheduler(object):
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
         """
-        def epoch_to_datetime(epoch):
-            return from_unix(float(epoch))
+
         
         if until is None:
             until = "+inf"
@@ -222,7 +281,7 @@ class Scheduler(object):
             until = to_unix((datetime.utcnow() + until))
         job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0,
                                                 until, withscores=with_times,
-                                                score_cast_func=epoch_to_datetime)
+                                                score_cast_func=self._epoch_to_datetime)
         if not with_times:
             job_ids = zip(job_ids, repeat(None))
         jobs = []
@@ -248,12 +307,18 @@ class Scheduler(object):
         """
         return self.get_jobs(to_unix(datetime.utcnow()), with_times=with_times)
 
+    def _get_queue_by_name(self, queue_name):
+        """
+        Returns queue by its name
+        """
+        key = '{0}{1}'.format(Queue.redis_queue_namespace_prefix, queue_name)
+        return Queue.from_queue_key(key, connection=self.connection)
+
     def get_queue_for_job(self, job):
         """
         Returns a queue to put job into.
         """
-        key = '{0}{1}'.format(Queue.redis_queue_namespace_prefix, job.origin)
-        return Queue.from_queue_key(key, connection=self.connection)
+        return self._get_queue_by_name(job.origin)
 
     def enqueue_job(self, job):
         """
@@ -307,6 +372,10 @@ class Scheduler(object):
         self.log.info('Running RQ scheduler...')
         self.register_birth()
         self._install_signal_handlers()
+
+        # check the stale jobs
+        self._check_stale_jobs()
+
         try:
             while True:
                 self.enqueue_jobs()
