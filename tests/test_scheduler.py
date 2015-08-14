@@ -69,6 +69,13 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(2, job_from_queue.ttl)
 
+    def test_create_job_with_id(self):
+        """
+        Ensure that ID is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, id='id test', args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('id test', job_from_queue.id)
 
     def test_job_not_persisted_if_commit_false(self):
         """
@@ -327,6 +334,14 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, ttl=4)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job.ttl, 4)
+
+    def test_periodic_job_sets_id(self):
+        """
+        Ensure that ID is passed to RQ by schedule.
+        """
+        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, id='id test')
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('id test', job.id)
 
     def test_run(self):
         """
