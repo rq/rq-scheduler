@@ -213,7 +213,7 @@ class Scheduler(object):
         """
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
-        
+
         if until is None:
             until = "+inf"
         elif isinstance(until, datetime):
@@ -290,11 +290,11 @@ class Scheduler(object):
         Move scheduled jobs into queues.
         """
         self.log.info('Checking for scheduled jobs...')
-        
+
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
-        
+
         # Refresh scheduler key's expiry
         self.connection.expire(self.scheduler_key, int(self._interval) + 10)
         return jobs
