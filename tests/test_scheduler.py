@@ -77,6 +77,14 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual('id test', job_from_queue.id)
 
+    def test_create_job_with_description(self):
+        """
+        Ensure that description is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, description='description', args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('description', job_from_queue.description)
+
     def test_job_not_persisted_if_commit_false(self):
         """
         Ensure jobs are only saved to Redis if commit=True.
@@ -342,6 +350,14 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, id='id test')
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual('id test', job.id)
+
+    def test_periodic_job_sets_description(self):
+        """
+        Ensure that description is passed to RQ by schedule.
+        """
+        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, description='description')
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('description', job.description)
 
     def test_run(self):
         """
