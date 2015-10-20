@@ -9,6 +9,7 @@ from itertools import repeat
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
+from platform import node
 
 from redis import WatchError
 
@@ -37,6 +38,7 @@ class Scheduler(object):
         with self.connection._pipeline() as p:
             p.delete(key)
             p.hset(key, 'birth', now)
+            p.hset(key, 'host', node())
             # Set scheduler key to expire a few seconds after polling interval
             # This way, the key will automatically expire if scheduler
             # quits unexpectedly
