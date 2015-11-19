@@ -49,7 +49,7 @@ There are two ways you can schedule a job. The first is using RQ Scheduler's ``e
     # Puts a job into the scheduler. The API is similar to RQ except that it
     # takes a datetime object as first argument. So for example to schedule a
     # job to run on Jan 1st 2020 we do:
-    scheduler.enqueue_at(datetime(2020, 1, 1), func)
+    scheduler.enqueue_at(datetime(2020, 1, 1), func) # Date time should be in UTC
 
     # Here's another example scheduling a job to run at a specific date and time (in UTC),
     # complete with args and kwargs.
@@ -68,6 +68,7 @@ popular a tweet is a few times during the course of the day, we could do somethi
     scheduler.enqueue_in(timedelta(hours=1), count_retweets, tweet_id)
     scheduler.enqueue_in(timedelta(days=1), count_retweets, tweet_id)
 
+**IMPORTANT**: You should always use UTC datetime when working with `RQ Scheduler`_.
 
 ------------------------
 Periodic & Repeated Jobs

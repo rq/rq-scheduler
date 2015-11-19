@@ -7,7 +7,7 @@ import os
 from redis import Redis
 from rq_scheduler.scheduler import Scheduler
 
-from rq.logutils import setup_loghandlers
+from rq_scheduler.utils import setup_loghandlers
 
 
 def main():

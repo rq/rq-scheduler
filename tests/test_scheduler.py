@@ -61,6 +61,30 @@ class TestScheduler(RQTestCase):
         self.assertEqual(job, job_from_queue)
         self.assertEqual(job_from_queue.func, say_hello)
 
+    def test_create_job_with_ttl(self):
+        """
+        Ensure that TTL is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, ttl=2, args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(2, job_from_queue.ttl)
+
+    def test_create_job_with_id(self):
+        """
+        Ensure that ID is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, id='id test', args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('id test', job_from_queue.id)
+
+    def test_create_job_with_description(self):
+        """
+        Ensure that description is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, description='description', args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('description', job_from_queue.description)
+
     def test_job_not_persisted_if_commit_false(self):
         """
         Ensure jobs are only saved to Redis if commit=True.
@@ -346,13 +370,37 @@ class TestScheduler(RQTestCase):
         self.assertNotIn(job.id, tl(self.testconn.zrange(
             self.scheduler.scheduled_jobs_key, 0, 1)))
 
-    def test_periodic_jobs_sets_ttl(self):
+    def test_periodic_jobs_sets_result_ttl(self):
         """
         Ensure periodic jobs set result_ttl to infinite.
         """
         job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job.result_ttl, -1)
+
+    def test_periodic_jobs_sets_ttl(self):
+        """
+        Ensure periodic jobs sets correctly ttl.
+        """
+        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, ttl=4)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job.ttl, 4)
+
+    def test_periodic_job_sets_id(self):
+        """
+        Ensure that ID is passed to RQ by schedule.
+        """
+        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, id='id test')
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('id test', job.id)
+
+    def test_periodic_job_sets_description(self):
+        """
+        Ensure that description is passed to RQ by schedule.
+        """
+        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, description='description')
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual('description', job.description)
 
     def test_run(self):
         """
