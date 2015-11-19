@@ -235,7 +235,7 @@ class TestScheduler(RQTestCase):
         # create a job that runs one minute past each whole hour
         job = self.scheduler.cron("1 * * * *", say_hello)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
-        self.assertEqual(job_from_queue.meta['crontab'], "1 * * * *")
+        self.assertEqual(job_from_queue.meta['cron_string'], "1 * * * *")
 
         # get the scheduled_time and convert it to a datetime object
         unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
@@ -281,7 +281,7 @@ class TestScheduler(RQTestCase):
         old_next_scheduled_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
 
         # change crontab
-        job.meta['crontab'] = "2 * * * *"
+        job.meta['cron_string'] = "2 * * * *"
 
         # enqueue the job
         self.scheduler.enqueue_job(job)

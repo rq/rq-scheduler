@@ -12,7 +12,7 @@ from rq.queue import Queue
 
 from redis import WatchError
 
-from .utils import from_unix, to_unix, crontab_get_next_scheduled_time
+from .utils import from_unix, to_unix, get_next_scheduled_time
 
 logger = logging.getLogger(__name__)
 
@@ -161,9 +161,9 @@ class Scheduler(object):
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=None, queue_name=queue_name)
 
-        job.meta['crontab'] = crontab_string
+        job.meta['cron_string'] = crontab_string
 
-        scheduled_time = crontab_get_next_scheduled_time(crontab_string)
+        scheduled_time = get_next_scheduled_time(crontab_string)
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
@@ -283,7 +283,7 @@ class Scheduler(object):
 
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
-        crontab = job.meta.get('crontab', None)
+        crontab = job.meta.get('cron_string', None)
 
         # If job is a repeated job, decrement counter
         if repeat:
@@ -306,7 +306,7 @@ class Scheduler(object):
                                   job.id)
         elif crontab:
             self.connection._zadd(self.scheduled_jobs_key,
-                                  to_unix(crontab_get_next_scheduled_time(crontab)),
+                                  to_unix(get_next_scheduled_time(crontab)),
                                   job.id)
 
     def enqueue_jobs(self):
