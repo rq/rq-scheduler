@@ -10,7 +10,7 @@ from rq.compat import as_text
 from rq.job import Job
 import warnings
 from rq_scheduler import Scheduler
-from rq_scheduler.utils import to_unix, from_unix, crontab_get_next_scheduled_time
+from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time
 
 from tests import RQTestCase
 
@@ -318,7 +318,7 @@ class TestScheduler(RQTestCase):
                             self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id))
 
         # check that new next scheduled time is set correctly
-        expected_next_scheduled_time = to_unix(crontab_get_next_scheduled_time("2 * * * *"))
+        expected_next_scheduled_time = to_unix(get_next_scheduled_time("2 * * * *"))
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          expected_next_scheduled_time)
 
