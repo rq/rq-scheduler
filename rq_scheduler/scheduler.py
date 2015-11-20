@@ -280,9 +280,8 @@ class Scheduler(object):
 
         if interval:
             # If this is a repeat job and counter has reached 0, don't repeat
-            if repeat is not None:
-                if job.meta['repeat'] == 0:
-                    return
+            if repeat is not None and if job.meta.get('repeat', 0) == 0:
+                return
             self.connection._zadd(self.scheduled_jobs_key,
                                   to_unix(datetime.utcnow()) + int(interval),
                                   job.id)
@@ -296,6 +295,10 @@ class Scheduler(object):
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
+
+        job_len = len(jobs)
+        if job_len > 0:
+            self.log.info("Scheduled {0} jobs".format(job_len))
 
         # Refresh scheduler key's expiry
         self.connection.expire(self.scheduler_key, int(self._interval) + 10)
@@ -311,7 +314,7 @@ class Scheduler(object):
         self._install_signal_handlers()
         try:
             while True:
-                self.enqueue_jobs()
+                _ = self.enqueue_jobs()
                 time.sleep(self._interval)
         finally:
             self.register_death()
