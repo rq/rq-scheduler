@@ -268,12 +268,9 @@ class Scheduler(object):
         # If job is a repeated job, decrement counter
         if repeat:
             job.meta['repeat'] = int(repeat) - 1
-        job.enqueued_at = datetime.utcnow()
-        job.save()
 
         queue = self.get_queue_for_job(job)
-        self.connection.sadd(queue.redis_queues_keys, queue.key)
-        queue.push_job_id(job.id)
+        queue.enqueue_job(job)
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
