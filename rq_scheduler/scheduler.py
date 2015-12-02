@@ -270,7 +270,6 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        self.connection.sadd(queue.redis_queues_keys, queue.key)
         queue.enqueue_job(job)
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
