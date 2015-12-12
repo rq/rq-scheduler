@@ -34,9 +34,9 @@ class TestScheduler(RQTestCase):
         super(TestScheduler, self).setUp()
         self.scheduler = Scheduler(connection=self.testconn)
 
-    def test_birth_and_death_registration(self):
+    def test_acquire_lock(self):
         """
-        When scheduler registers it's birth, besides creating a key, it should
+        When scheduler acquires a lock, besides creating a key, it should
         also set an expiry that's a few seconds longer than it's polling
         interval so it automatically expires if scheduler is unexpectedly
         terminated.
@@ -44,13 +44,29 @@ class TestScheduler(RQTestCase):
         key = Scheduler.scheduler_key
         self.assertNotIn(key, tl(self.testconn.keys('*')))
         scheduler = Scheduler(connection=self.testconn, interval=20)
-        scheduler.register_birth()
+        self.assertTrue(scheduler.acquire_lock())
         self.assertIn(key, tl(self.testconn.keys('*')))
         self.assertEqual(self.testconn.ttl(key), 30)
-        self.assertFalse(self.testconn.hexists(key, 'death'))
-        self.assertRaises(ValueError, scheduler.register_birth)
-        scheduler.register_death()
-        self.assertTrue(self.testconn.hexists(key, 'death'))
+        scheduler.remove_lock()
+        self.assertNotIn(key, tl(self.testconn.keys('*')))
+
+    def test_no_two_schedulers_acquire_lock(self):
+        """
+        Ensure that no two schedulers can acquire the lock at the
+        same time. When removing the lock, only the scheduler which
+        originally acquired the lock can remove the lock.
+        """
+        key = Scheduler.scheduler_key
+        self.assertNotIn(key, tl(self.testconn.keys('*')))
+        scheduler1 = Scheduler(connection=self.testconn, interval=20)
+        scheduler2 = Scheduler(connection=self.testconn, interval=20)
+        self.assertTrue(scheduler1.acquire_lock())
+        self.assertFalse(scheduler2.acquire_lock())
+        self.assertIn(key, tl(self.testconn.keys('*')))
+        scheduler2.remove_lock()
+        self.assertIn(key, tl(self.testconn.keys('*')))
+        scheduler1.remove_lock()
+        self.assertNotIn(key, tl(self.testconn.keys('*')))
 
     def test_create_job(self):
         """
@@ -391,11 +407,10 @@ class TestScheduler(RQTestCase):
         scheduler = Scheduler(connection=self.testconn, interval=0.1)   # testing interval = 0.1 second
         self.assertEqual(scheduler._interval, 0.1)
 
-        #register birth
-        scheduler.register_birth()
+        #acquire lock
+        self.assertTrue(scheduler.acquire_lock())
         self.assertIn(key, tl(self.testconn.keys('*')))
         self.assertEqual(self.testconn.ttl(key), 10)  # int(0.1) + 10 = 10
-        self.assertFalse(self.testconn.hexists(key, 'death'))
 
         #enqueue a job
         now = datetime.utcnow()
@@ -403,8 +418,8 @@ class TestScheduler(RQTestCase):
         self.assertIn(job, self.scheduler.get_jobs_to_queue())
         self.assertEqual(len(self.scheduler.get_jobs()), 1)
 
-        #register death
-        scheduler.register_death()
+        #remove the lock
+        scheduler.remove_lock()
 
         #test that run works with the small floating-point interval
         def send_stop_signal():
