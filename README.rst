@@ -98,17 +98,17 @@ Cron Jobs
 ------------------------
 
 As of version 0.5.2, `RQ Scheduler`_ also supports creating Cron Jobs, which you can use for
-repeated jobs to run periodically at fixed times, dates, or intervals, for more info check
+repeated jobs to run periodically at fixed times, dates or intervals, for more info check
 https://en.wikipedia.org/wiki/Cron. You can do this via the ``cron`` method.
 
 This is how you do it::
 
     scheduler.cron(
-        crontab_string,                # A crontab string (e.g. "0 0 * * 0")
-        func=func,                     # Function to be queued
-        args=[arg1, arg2],             # Arguments passed into function when executed
-        kwargs={'foo': 'bar'},         # Keyword arguments passed into function when executed
-        queue_name=queue_name          # In which queue the job should be put in
+        cron_string,                # A cron string (e.g. "0 0 * * 0")
+        func=func,                  # Function to be queued
+        args=[arg1, arg2],          # Arguments passed into function when executed
+        kwargs={'foo': 'bar'},      # Keyword arguments passed into function when executed
+        queue_name=queue_name       # In which queue the job should be put in
     )
 
 -------------------------

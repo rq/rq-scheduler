@@ -154,17 +154,18 @@ class Scheduler(object):
         return job
 
 
-    def cron(self, crontab_string, func, args=None, kwargs=None, queue_name=None):
+    def cron(self, cron_string, func, args=None, kwargs=None, queue_name=None):
         """
         Schedule a cronjob
         """
+        scheduled_time = get_next_scheduled_time(cron_string)
+
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=None, queue_name=queue_name)
 
-        job.meta['cron_string'] = crontab_string
-
-        scheduled_time = get_next_scheduled_time(crontab_string)
+        job.meta['cron_string'] = cron_string
         job.save()
+
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -283,7 +284,7 @@ class Scheduler(object):
 
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
-        crontab = job.meta.get('cron_string', None)
+        cron_string = job.meta.get('cron_string', None)
 
         # If job is a repeated job, decrement counter
         if repeat:
@@ -304,9 +305,9 @@ class Scheduler(object):
             self.connection._zadd(self.scheduled_jobs_key,
                                   to_unix(datetime.utcnow()) + int(interval),
                                   job.id)
-        elif crontab:
+        elif cron_string:
             self.connection._zadd(self.scheduled_jobs_key,
-                                  to_unix(get_next_scheduled_time(crontab)),
+                                  to_unix(get_next_scheduled_time(cron_string)),
                                   job.id)
 
     def enqueue_jobs(self):
