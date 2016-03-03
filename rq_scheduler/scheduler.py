@@ -154,7 +154,7 @@ class Scheduler(object):
         return job
 
 
-    def cron(self, cron_string, func, args=None, kwargs=None, queue_name=None):
+    def cron(self, cron_string, func, args=None, kwargs=None, repeat=None, queue_name=None):
         """
         Schedule a cronjob
         """
@@ -164,6 +164,10 @@ class Scheduler(object):
                                result_ttl=None, queue_name=queue_name)
 
         job.meta['cron_string'] = cron_string
+
+        if repeat is not None:
+            job.meta['repeat'] = int(repeat)
+
         job.save()
 
         self.connection._zadd(self.scheduled_jobs_key,
@@ -306,6 +310,10 @@ class Scheduler(object):
                                   to_unix(datetime.utcnow()) + int(interval),
                                   job.id)
         elif cron_string:
+            # If this is a repeat job and counter has reached 0, don't repeat
+            if repeat is not None:
+                if job.meta['repeat'] == 0:
+                    return
             self.connection._zadd(self.scheduled_jobs_key,
                                   to_unix(get_next_scheduled_time(cron_string)),
                                   job.id)
