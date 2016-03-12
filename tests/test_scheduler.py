@@ -10,7 +10,7 @@ from rq.compat import as_text
 from rq.job import Job
 import warnings
 from rq_scheduler import Scheduler
-from rq_scheduler.utils import to_unix
+from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time
 
 from tests import RQTestCase
 
@@ -252,6 +252,24 @@ class TestScheduler(RQTestCase):
         self.assertEqual(job_from_queue.meta['interval'], 10)
         self.assertEqual(job_from_queue.meta['repeat'], 11)
 
+    def test_crontab_persisted_correctly(self):
+        """
+        Ensure that crontab attribute gets correctly saved in Redis.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.cron("1 * * * *", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['cron_string'], "1 * * * *")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - datetime.utcnow() < timedelta(hours=1)
+
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval
         def create_job():
@@ -278,6 +296,31 @@ class TestScheduler(RQTestCase):
             tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(time_now) + interval)
+
+    def test_job_with_crontab_get_rescheduled(self):
+        # Create a job with a cronjob_string
+        job = self.scheduler.cron("1 * * * *", say_hello)
+
+        # current unix_time
+        old_next_scheduled_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+
+        # change crontab
+        job.meta['cron_string'] = "2 * * * *"
+
+        # enqueue the job
+        self.scheduler.enqueue_job(job)
+
+        self.assertIn(job.id,
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+
+        # check that next scheduled time has changed
+        self.assertNotEqual(old_next_scheduled_time,
+                            self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id))
+
+        # check that new next scheduled time is set correctly
+        expected_next_scheduled_time = to_unix(get_next_scheduled_time("2 * * * *"))
+        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
+                         expected_next_scheduled_time)
 
     def test_job_with_repeat(self):
         """

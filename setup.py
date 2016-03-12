@@ -24,7 +24,7 @@ setup(
     ''',
     package_data = { '': ['README.rst'] },
     tests_require=tests_require,
-    install_requires=['rq>=0.3.5'] + tests_require,
+    install_requires=['rq>=0.3.5','croniter>=0.3.9'] + tests_require,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',

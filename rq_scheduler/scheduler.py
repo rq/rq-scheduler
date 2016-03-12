@@ -12,7 +12,7 @@ from rq.queue import Queue
 
 from redis import WatchError
 
-from .utils import from_unix, to_unix
+from .utils import from_unix, to_unix, get_next_scheduled_time
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +138,7 @@ class Scheduler(object):
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, ttl=ttl, id=id, description=description, queue_name=queue_name)
+
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
@@ -151,6 +152,29 @@ class Scheduler(object):
                               to_unix(scheduled_time),
                               job.id)
         return job
+
+
+    def cron(self, cron_string, func, args=None, kwargs=None, repeat=None, queue_name=None):
+        """
+        Schedule a cronjob
+        """
+        scheduled_time = get_next_scheduled_time(cron_string)
+
+        job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
+                               result_ttl=None, queue_name=queue_name)
+
+        job.meta['cron_string'] = cron_string
+
+        if repeat is not None:
+            job.meta['repeat'] = int(repeat)
+
+        job.save()
+
+        self.connection._zadd(self.scheduled_jobs_key,
+                              to_unix(scheduled_time),
+                              job.id)
+        return job
+
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
                 interval=None, repeat=None, result_ttl=None, queue_name=None):
@@ -264,6 +288,7 @@ class Scheduler(object):
 
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
+        cron_string = job.meta.get('cron_string', None)
 
         # If job is a repeated job, decrement counter
         if repeat:
@@ -280,6 +305,14 @@ class Scheduler(object):
                     return
             self.connection._zadd(self.scheduled_jobs_key,
                                   to_unix(datetime.utcnow()) + int(interval),
+                                  job.id)
+        elif cron_string:
+            # If this is a repeat job and counter has reached 0, don't repeat
+            if repeat is not None:
+                if job.meta['repeat'] == 0:
+                    return
+            self.connection._zadd(self.scheduled_jobs_key,
+                                  to_unix(get_next_scheduled_time(cron_string)),
                                   job.id)
 
     def enqueue_jobs(self):
