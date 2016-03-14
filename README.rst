@@ -194,6 +194,12 @@ same names but with a prefix of ``RQ_REDIS_``.
 Changelog
 =========
 
+Version 0.6.0
+-------------
+* Added `scheduler.cron()` capability. Thanks @petervtzand!
+* `scheduler.schedule()` now accepts `id` and `ttl` kwargs. Thanks @mbodock!
+
+
 Version 0.5.1
 -------------
 * Travis CI fixes. Thanks Steven Kryskalla!

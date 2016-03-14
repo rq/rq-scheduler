@@ -8,7 +8,7 @@ if platform.python_version() < '2.7':
 
 setup(
     name='rq-scheduler',
-    version='0.5.1',
+    version='0.6.0',
     author='Selwin Ong',
     author_email='selwin.ong@gmail.com',
     packages=['rq_scheduler'],
@@ -22,9 +22,9 @@ setup(
     [console_scripts]
     rqscheduler = rq_scheduler.scripts.rqscheduler:main
     ''',
-    package_data = { '': ['README.rst'] },
+    package_data={'': ['README.rst']},
     tests_require=tests_require,
-    install_requires=['rq>=0.3.5','croniter>=0.3.9'] + tests_require,
+    install_requires=['rq>=0.3.5', 'croniter>=0.3.9'] + tests_require,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
