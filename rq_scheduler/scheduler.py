@@ -226,6 +226,27 @@ class Scheduler(object):
                         raise ValueError('Job not in scheduled jobs queue')
                     continue
 
+    def fetch_job(self, job_id, with_time=False):
+        """
+        Returns a the job with the specified job_id.
+        Otherwise returns None
+        """
+        def epoch_to_datetime(epoch):
+            return from_unix(float(epoch))
+
+        try:
+            job =  Job.fetch(job_id, connection=self.connection)
+            if with_time:
+                score = self.connection.zscore(self.scheduled_jobs_key, job.id)
+                sched_time = epoch_to_datetime(score)
+                return (job, sched_time)
+            else:
+                return job
+        except NoSuchJobError:
+            self.cancel(job_id)
+            if with_time:
+                return (None, None)
+
     def get_jobs(self, until=None, with_times=False):
         """
         Returns a list of job instances that will be queued until the given time.
