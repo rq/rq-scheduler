@@ -97,7 +97,7 @@ Otherwise, the entry with the job details will expire and the job will not get r
 Cron Jobs
 ------------------------
 
-As of version 0.5.2, `RQ Scheduler`_ also supports creating Cron Jobs, which you can use for
+As of version 0.6.0, `RQ Scheduler`_ also supports creating Cron Jobs, which you can use for
 repeated jobs to run periodically at fixed times, dates or intervals, for more info check
 https://en.wikipedia.org/wiki/Cron. You can do this via the ``cron`` method.
 
