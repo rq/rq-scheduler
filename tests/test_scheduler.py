@@ -8,6 +8,7 @@ from threading import Thread
 from rq import Queue
 from rq.compat import as_text
 from rq.job import Job
+from rq.exceptions import NoSuchJobError
 import warnings
 from rq_scheduler import Scheduler
 from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time
@@ -187,6 +188,10 @@ class TestScheduler(RQTestCase):
         self.scheduler.cancel(job)
         self.assertNotIn(job.id, tl(self.testconn.zrange(
             self.scheduler.scheduled_jobs_key, 0, 1)))
+
+        # assertRaises isn't a context manager in Python 2.6 :(
+        # See: http://stackoverflow.com/a/9599863/118608
+        self.assertRaises(NoSuchJobError, lambda: Job.fetch(job.id))
 
     def test_change_execution_time(self):
         """
