@@ -270,7 +270,7 @@ class TestScheduler(RQTestCase):
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
 
-    def test_crontab_sets_id(self):
+    def test_crontab_sets_timeout(self):
         """
         Ensure that a job scheduled via crontab can be created with
         a custom timeout.
