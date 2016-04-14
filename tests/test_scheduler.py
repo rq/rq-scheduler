@@ -270,6 +270,16 @@ class TestScheduler(RQTestCase):
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
 
+    def test_crontab_sets_id(self):
+        """
+        Ensure that a job scheduled via crontab can be created with
+        a custom timeout.
+        """
+        timeout = 13
+        job = self.scheduler.cron("1 * * * *", say_hello, timeout=timeout)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.timeout, timeout)
+
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval
         def create_job():
