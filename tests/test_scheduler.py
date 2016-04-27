@@ -120,6 +120,34 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(right_now + time_delta))
 
+    def test_fetch_job(self):
+        """
+        Ensure fetch_job() returns the job with the specified job id.
+        """
+        job1 = self.scheduler._create_job(say_hello, id='the job we want')
+        job2 = self.scheduler._create_job(say_hello, id='the job we don\'t want')
+        job_from_queue = self.scheduler.fetch_job(job1.id)
+        self.scheduler.fetch_job(job2.id)
+        self.assertEqual('the job we want', job_from_queue.id)
+
+        no_job = self.scheduler.fetch_job('non-existing-job-id')
+        self.assertEqual(no_job, None)
+
+        sched_date = datetime.utcnow() + timedelta(minutes=1)
+        job_with_time = self.scheduler.schedule(sched_date, say_hello, id='magical scheduler')
+        job_from_queue, date_from_queue = self.scheduler.fetch_job(job_with_time.id, with_time=True)
+        self.assertEqual('magical scheduler', job_from_queue.id)
+        # The redis scores are floats which gives a little bit of imprecision
+        # in the returned dates
+        self.assertTrue(
+            sched_date - date_from_queue < timedelta(seconds=2) and \
+            sched_date - date_from_queue > timedelta(seconds=-2)
+        )
+
+        no_job2, no_time = self.scheduler.fetch_job('non-existing-job-id', with_time=True)
+        self.assertEqual(no_job2, None)
+        self.assertEqual(no_time, None)
+
     def test_get_jobs(self):
         """
         Ensure get_jobs() returns all jobs until the specified time.
