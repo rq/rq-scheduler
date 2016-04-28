@@ -136,7 +136,9 @@ class TestScheduler(RQTestCase):
             scheduler = Scheduler(connection=self.testconn, queue_name=queue)
             for x in range(counts[queue]):
                 scheduler.enqueue_at(now, say_hello)
-        self.assertEqual(counts, self.scheduler.get_job_count_by_queue())
+        job_counts = self.scheduler.get_job_count_by_queue()
+        for queue in queues:
+            self.assertEqual(counts[queue], job_counts[queue])
 
     def test_get_jobs(self):
         """
