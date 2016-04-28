@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timedelta
 import os
+import random
 import signal
 import time
 from threading import Thread
@@ -119,6 +120,23 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_in(time_delta, say_hello)
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(right_now + time_delta))
+
+    def test_get_job_count(self):
+        now = datetime.utcnow()
+        count = random.randint(10, 20)
+        for x in range(count):
+            self.scheduler.enqueue_at(now, say_hello)
+        self.assertEqual(count, self.scheduler.get_job_count())
+
+    def test_get_job_count_by_queue(self):
+        now = datetime.utcnow()
+        queues = ['fee', 'fi', 'fo', 'fum']
+        counts = {queue: random.randint(10, 20) for queue in queues}
+        for queue in queues:
+            scheduler = Scheduler(connection=self.testconn, queue_name=queue)
+            for x in range(counts[queue]):
+                scheduler.enqueue_at(now, say_hello)
+        self.assertEqual(counts, self.scheduler.get_job_count_by_queue())
 
     def test_get_jobs(self):
         """
