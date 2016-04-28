@@ -131,7 +131,7 @@ class TestScheduler(RQTestCase):
     def test_get_job_count_by_queue(self):
         now = datetime.utcnow()
         queues = ['fee', 'fi', 'fo', 'fum']
-        counts = {queue: random.randint(10, 20) for queue in queues}
+        counts = dict((queue, random.randint(10, 20)) for queue in queues)
         for queue in queues:
             scheduler = Scheduler(connection=self.testconn, queue_name=queue)
             for x in range(counts[queue]):

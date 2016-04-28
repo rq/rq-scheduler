@@ -268,6 +268,7 @@ class Scheduler(object):
         counts = defaultdict(int)
         pipeline = self.connection.pipeline()
         for job_id in job_ids:
+            job_id = job_id.decode('utf-8')
             r = pipeline.hget(Job.key_for(job_id), 'origin')
 
         res = pipeline.execute()
