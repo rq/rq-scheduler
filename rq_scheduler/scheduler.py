@@ -273,7 +273,7 @@ class Scheduler(object):
 
         res = pipeline.execute()
         for r in res:
-            counts[r] += 1
+            counts[r.decode('utf-8')] += 1
         return counts
 
     def get_jobs(self, until=None, with_times=False):
