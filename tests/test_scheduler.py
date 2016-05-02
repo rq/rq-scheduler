@@ -1,4 +1,3 @@
-import unittest
 from datetime import datetime, timedelta
 import os
 import signal
@@ -21,8 +20,10 @@ def say_hello(name=None):
         name = 'Stranger'
     return 'Hi there, %s!' % (name,)
 
+
 def tl(l):
     return [as_text(i) for i in l]
+
 
 def simple_addition(x, y, z):
     return x + y + z
@@ -279,6 +280,16 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.cron("1 * * * *", say_hello, timeout=timeout)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_from_queue.timeout, timeout)
+
+    def test_crontab_sets_id(self):
+        """
+        Ensure that a job scheduled via crontab can be created with
+        a custom id
+        """
+        job_id = "hello-job-id"
+        job = self.scheduler.cron("1 * * * *", say_hello, id=job_id)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_id, job_from_queue.id)
 
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval
