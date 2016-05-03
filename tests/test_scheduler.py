@@ -291,6 +291,25 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_id, job_from_queue.id)
 
+    def test_crontab_sets_default_result_ttl(self):
+        """
+        Ensure that a job scheduled via crontab gets proper default
+        result_ttl (-1) periodic tasks.
+        """
+        job = self.scheduler.cron("1 * * * *", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(-1, job_from_queue.result_ttl)
+
+    def test_crontab_sets_description(self):
+        """
+        Ensure that a job scheduled via crontab can be created with
+        a custom description
+        """
+        description = 'test description'
+        job = self.scheduler.cron("1 * * * *", say_hello, description=description)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(description, job_from_queue.description)
+
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval
         def create_job():
