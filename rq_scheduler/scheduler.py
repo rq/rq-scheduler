@@ -160,8 +160,10 @@ class Scheduler(object):
         """
         scheduled_time = get_next_scheduled_time(cron_string)
 
+        # Set result_ttl to -1, as jobs scheduled via cron are periodic ones.
+        # Otherwise the job would expire after 500 sec.
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=None, id=id, queue_name=queue_name)
+                               result_ttl=-1, id=id, queue_name=queue_name)
 
         job.meta['cron_string'] = cron_string
 
@@ -176,7 +178,6 @@ class Scheduler(object):
                               to_unix(scheduled_time),
                               job.id)
         return job
-
 
     def enqueue(self, scheduled_time, func, args=None, kwargs=None,
                 interval=None, repeat=None, result_ttl=None, queue_name=None):
