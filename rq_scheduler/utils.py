@@ -37,7 +37,7 @@ def setup_loghandlers(level='INFO'):
         logger.addHandler(handler)
 
 
-def rationalize_until(self, until=None):
+def rationalize_until(until=None):
     """
     Rationalizes the `until` argument used by other functions. This function
     accepts datetime and timedelta instances as well as integers representing

@@ -122,12 +122,22 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(right_now + time_delta))
 
-    def test_get_job_count(self):
+    def test_count(self):
         now = datetime.utcnow()
-        count = random.randint(10, 20)
-        for x in range(count):
+        count1 = random.randint(10, 20)
+        for x in range(count1):
             self.scheduler.enqueue_at(now, say_hello)
-        self.assertEqual(count, self.scheduler.count())
+        self.assertEqual(count1, self.scheduler.count())
+
+        future_time = now + timedelta(hours=1)
+        future_test_time = now + timedelta(minutes=59, seconds=59)
+        count2 = random.randint(10, 20)
+        for x in range(count2):
+            self.scheduler.enqueue_at(future_time, say_hello)
+
+        self.assertEqual(count1, self.scheduler.count(timedelta(minutes=59, seconds=59)))
+        self.assertEqual(count1, self.scheduler.count(future_test_time))
+        self.assertEqual(count1+count2, self.scheduler.count())
 
     def test_get_jobs(self):
         """
