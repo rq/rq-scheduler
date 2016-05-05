@@ -127,7 +127,7 @@ class TestScheduler(RQTestCase):
         count = random.randint(10, 20)
         for x in range(count):
             self.scheduler.enqueue_at(now, say_hello)
-        self.assertEqual(count, self.scheduler.get_job_count())
+        self.assertEqual(count, self.scheduler.count())
 
     def test_get_jobs(self):
         """
