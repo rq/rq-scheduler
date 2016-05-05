@@ -13,7 +13,7 @@ from rq.queue import Queue
 
 from redis import WatchError
 
-from .utils import from_unix, to_unix, get_next_scheduled_time
+from .utils import from_unix, to_unix, get_next_scheduled_time, rationalize_until
 
 logger = logging.getLogger(__name__)
 
@@ -227,54 +227,15 @@ class Scheduler(object):
                         raise ValueError('Job not in scheduled jobs queue')
                     continue
 
-    def _rationalize_until(self, until=None):
-        """
-        Rationalizes the `until` argument used by other functions. This function
-        accepts datetime and timedelta instances as well as integers representing
-        epoch values.
-        """
-        if until is None:
-            until = "+inf"
-        elif isinstance(until, datetime):
-            until = to_unix(until)
-        elif isinstance(until, timedelta):
-            until = to_unix((datetime.utcnow() + until))
-        return until
-
-    def get_job_count(self, until=None):
+    def count(self, until=None):
         """
         Returns the total number of jobs that are scheduled for all queues. This function
         accepts datetime and timedelta instances as well as integers representing epoch
         values.
         """
 
-        until = self._rationalize_until(until)
+        until = rationalize_until(until)
         return self.connection.zcount(self.scheduled_jobs_key, 0, until)
-
-    def get_job_count_by_queue(self, until=None):
-        """
-        Returns a dictionary keyed by queue name with the values being the number
-        of jobs scheduled for each queue. This function accepts datetime and timedelta
-        instances as well as integers representing epoch values.
-
-        NOTE: Use carefully - this implementation retrieves all scheduled job IDs from
-        Redis and then retrieves the `origin` value from the hash for each job. This can get
-        quite slow when there is a large number of jobs - think on the order of several
-        seconds when there are 100,000 jobs scheduled.
-        """
-
-        until = self._rationalize_until(until)
-        job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0, until)
-        counts = defaultdict(int)
-        pipeline = self.connection.pipeline()
-        for job_id in job_ids:
-            job_id = job_id.decode('utf-8')
-            r = pipeline.hget(Job.key_for(job_id), 'origin')
-
-        res = pipeline.execute()
-        for r in res:
-            counts[r.decode('utf-8')] += 1
-        return counts
 
     def get_jobs(self, until=None, with_times=False):
         """
@@ -288,7 +249,7 @@ class Scheduler(object):
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
 
-        until = self._rationalize_until(until)
+        until = rationalize_until(until)
         job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0,
                                                 until, withscores=with_times,
                                                 score_cast_func=epoch_to_datetime)

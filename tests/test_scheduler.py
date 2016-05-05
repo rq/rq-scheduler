@@ -128,18 +128,6 @@ class TestScheduler(RQTestCase):
             self.scheduler.enqueue_at(now, say_hello)
         self.assertEqual(count, self.scheduler.get_job_count())
 
-    def test_get_job_count_by_queue(self):
-        now = datetime.utcnow()
-        queues = ['fee', 'fi', 'fo', 'fum']
-        counts = dict((queue, random.randint(10, 20)) for queue in queues)
-        for queue in queues:
-            scheduler = Scheduler(connection=self.testconn, queue_name=queue)
-            for x in range(counts[queue]):
-                scheduler.enqueue_at(now, say_hello)
-        job_counts = self.scheduler.get_job_count_by_queue()
-        for queue in queues:
-            self.assertEqual(counts[queue], job_counts[queue])
-
     def test_get_jobs(self):
         """
         Ensure get_jobs() returns all jobs until the specified time.
