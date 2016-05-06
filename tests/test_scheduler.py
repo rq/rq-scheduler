@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 import os
-import random
 import signal
 import time
 from threading import Thread
@@ -8,7 +7,6 @@ from threading import Thread
 from rq import Queue
 from rq.compat import as_text
 from rq.job import Job
-import warnings
 from rq_scheduler import Scheduler
 from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time
 
@@ -266,7 +264,7 @@ class TestScheduler(RQTestCase):
 
     def test_interval_and_repeat_persisted_correctly(self):
         """
-        Ensure that interval and repeat attributes get correctly saved in Redis.
+        Ensure that interval and repeat attributes are correctly saved.
         """
         job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=10, repeat=11)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)

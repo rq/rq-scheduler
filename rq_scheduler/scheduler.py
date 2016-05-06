@@ -1,7 +1,6 @@
 import logging
 import signal
 import time
-import warnings
 
 from datetime import datetime
 from itertools import repeat
