@@ -195,6 +195,13 @@ same names but with a prefix of ``RQ_REDIS_``.
 Changelog
 =========
 
+Version 0.6.1
+-------------
+* Added `scheduler.count()`. Thanks @smaccona!
+* `scheduler.get_jobs()` now supports pagination. Thanks @smaccona!
+* Better `ttl` and `result_ttl` defaults for jobs created by `scheduler.cron`. Thanks @csaba-stylight and @lechup!
+
+
 Version 0.6.0
 -------------
 * Added `scheduler.cron()` capability. Thanks @petervtzand!
