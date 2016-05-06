@@ -124,20 +124,17 @@ class TestScheduler(RQTestCase):
 
     def test_count(self):
         now = datetime.utcnow()
-        count1 = random.randint(10, 20)
-        for x in range(count1):
-            self.scheduler.enqueue_at(now, say_hello)
-        self.assertEqual(count1, self.scheduler.count())
+        self.scheduler.enqueue_at(now, say_hello)
+        self.assertEqual(self.scheduler.count(), 1)
 
         future_time = now + timedelta(hours=1)
         future_test_time = now + timedelta(minutes=59, seconds=59)
-        count2 = random.randint(10, 20)
-        for x in range(count2):
-            self.scheduler.enqueue_at(future_time, say_hello)
 
-        self.assertEqual(count1, self.scheduler.count(timedelta(minutes=59, seconds=59)))
-        self.assertEqual(count1, self.scheduler.count(future_test_time))
-        self.assertEqual(count1+count2, self.scheduler.count())
+        self.scheduler.enqueue_at(future_time, say_hello)
+
+        self.assertEqual(self.scheduler.count(timedelta(minutes=59, seconds=59)), 1)
+        self.assertEqual(self.scheduler.count(future_test_time), 1)
+        self.assertEqual(self.scheduler.count(), 2)
 
     def test_get_jobs(self):
         """
@@ -161,11 +158,13 @@ class TestScheduler(RQTestCase):
         future_time = now + timedelta(hours=1)
         future_test_time = now + timedelta(minutes=59, seconds=59)
 
-        # We queue each job a second later than the previous one, otherwise Redis
-        # will return jobs that have the same enqueue time in lexicographical order
-        # (which is almost definitely not the order in which we enqueued them)
-        now_jobs = [self.scheduler.enqueue_at(now+timedelta(seconds=x), say_hello) for x in range(15)]
-        future_jobs = [self.scheduler.enqueue_at(future_time+timedelta(seconds=x), say_hello) for x in range(15)]
+        # Schedule each job a second later than the previous job,
+        # otherwise Redis will return jobs that have the same scheduled time in
+        # lexicographical order (not the order in which we enqueued them)
+        now_jobs = [self.scheduler.enqueue_at(now + timedelta(seconds=x), say_hello)
+                    for x in range(15)]
+        future_jobs = [self.scheduler.enqueue_at(future_time + timedelta(seconds=x), say_hello)
+                       for x in range(15)]
 
         expected_slice = now_jobs[5:] + future_jobs[:10]   # last 10 from now_jobs and first 10 from future_jobs
         expected_until_slice = now_jobs[5:]                # last 10 from now_jobs
@@ -265,28 +264,6 @@ class TestScheduler(RQTestCase):
         self.assertEqual(job.kwargs, {'y': 1, 'z': 1})
         self.assertEqual(job.args, (1,))
 
-    def test_enqueue_is_deprecated(self):
-        """
-        Ensure .enqueue() throws a DeprecationWarning
-        """
-        with warnings.catch_warnings(record=True) as w:
-            # Enable all warnings
-            warnings.simplefilter("always")
-            job = self.scheduler.enqueue(datetime.utcnow(), say_hello)
-            self.assertEqual(1, len(w))
-            self.assertEqual(w[0].category, DeprecationWarning)
-
-    def test_enqueue_periodic(self):
-        """
-        Ensure .enqueue_periodic() throws a DeprecationWarning
-        """
-        with warnings.catch_warnings(record=True) as w:
-            # Enable all warnings
-            warnings.simplefilter("always")
-            job = self.scheduler.enqueue_periodic(datetime.utcnow(), 1, None, say_hello)
-            self.assertEqual(1, len(w))
-            self.assertEqual(w[0].category, DeprecationWarning)
-
     def test_interval_and_repeat_persisted_correctly(self):
         """
         Ensure that interval and repeat attributes get correctly saved in Redis.
@@ -372,14 +349,6 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(time_now) + interval)
 
-        # Now the same thing using enqueue_periodic
-        job = self.scheduler.enqueue_periodic(time_now, interval, None, say_hello)
-        self.scheduler.enqueue_job(job)
-        self.assertIn(job.id,
-            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
-        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
-                         to_unix(time_now) + interval)
-
     def test_job_with_crontab_get_rescheduled(self):
         # Create a job with a cronjob_string
         job = self.scheduler.cron("1 * * * *", say_hello)
@@ -420,22 +389,6 @@ class TestScheduler(RQTestCase):
 
         # If job is repeated twice, it should only be put back in the queue once
         job = self.scheduler.schedule(time_now, say_hello, interval=interval, repeat=2)
-        self.scheduler.enqueue_job(job)
-        self.assertIn(job.id,
-            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
-        self.scheduler.enqueue_job(job)
-        self.assertNotIn(job.id,
-            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
-
-        time_now = datetime.utcnow()
-        # Now the same thing using enqueue_periodic
-        job = self.scheduler.enqueue_periodic(time_now, interval, 1, say_hello)
-        self.scheduler.enqueue_job(job)
-        self.assertNotIn(job.id,
-            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
-
-        # If job is repeated twice, it should only be put back in the queue once
-        job = self.scheduler.enqueue_periodic(time_now, interval, 2, say_hello)
         self.scheduler.enqueue_job(job)
         self.assertIn(job.id,
             tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))

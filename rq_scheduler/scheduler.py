@@ -3,8 +3,7 @@ import signal
 import time
 import warnings
 
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
@@ -119,18 +118,9 @@ class Scheduler(object):
                               job.id)
         return job
 
-    def enqueue_periodic(self, scheduled_time, interval, repeat, func,
-                         *args, **kwargs):
-        """
-        Schedule a job to be periodically executed, at a certain interval.
-        """
-        warnings.warn("'enqueue_periodic()' has been deprecated in favor of '.schedule()'"
-                      "and will be removed in a future release.", DeprecationWarning)
-        return self.schedule(scheduled_time, func, args=args, kwargs=kwargs,
-                            interval=interval, repeat=repeat)
-
-    def schedule(self, scheduled_time, func, args=None, kwargs=None, interval=None,
-                repeat=None, result_ttl=None, ttl=None, timeout=None, id=None, description=None, queue_name=None):
+    def schedule(self, scheduled_time, func, args=None, kwargs=None,
+                 interval=None, repeat=None, result_ttl=None, ttl=None,
+                 timeout=None, id=None, description=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -138,7 +128,8 @@ class Scheduler(object):
         if interval is not None and result_ttl is None:
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=result_ttl, ttl=ttl, id=id, description=description, queue_name=queue_name)
+                               result_ttl=result_ttl, ttl=ttl, id=id,
+                               description=description, queue_name=queue_name)
 
         if interval is not None:
             job.meta['interval'] = int(interval)
@@ -180,17 +171,6 @@ class Scheduler(object):
                               job.id)
         return job
 
-    def enqueue(self, scheduled_time, func, args=None, kwargs=None,
-                interval=None, repeat=None, result_ttl=None, queue_name=None):
-        """
-        This method is deprecated and only left in as a backwards compatibility
-        alias for schedule().
-        """
-        warnings.warn("'enqueue()' has been deprecated in favor of '.schedule()'"
-                      "and will be removed in a future release.", DeprecationWarning)
-        return self.schedule(scheduled_time, func, args, kwargs, interval,
-                             repeat, result_ttl, queue_name=queue_name)
-
     def cancel(self, job):
         """
         Pulls a job from the scheduler queue. This function accepts either a
@@ -203,8 +183,8 @@ class Scheduler(object):
 
     def __contains__(self, item):
         """
-        Returns a boolean indicating whether the given job instance or job id is
-        scheduled for execution.
+        Returns a boolean indicating whether the given job instance or job id
+        is scheduled for execution.
         """
         job_id = item
         if isinstance(item, Job):
@@ -213,7 +193,7 @@ class Scheduler(object):
 
     def change_execution_time(self, job, date_time):
         """
-        Change a job's execution time. Wrap this in a transaction to prevent race condition.
+        Change a job's execution time.
         """
         with self.connection._pipeline() as pipe:
             while 1:
@@ -232,9 +212,9 @@ class Scheduler(object):
 
     def count(self, until=None):
         """
-        Returns the total number of jobs that are scheduled for all queues. This function
-        accepts datetime and timedelta instances as well as integers representing epoch
-        values.
+        Returns the total number of jobs that are scheduled for all queues.
+        This function accepts datetime, timedelta instances as well as
+        integers representing epoch values.
         """
 
         until = rationalize_until(until)
@@ -242,16 +222,17 @@ class Scheduler(object):
 
     def get_jobs(self, until=None, with_times=False, offset=None, length=None):
         """
-        Returns a list of job instances that will be queued until the given time.
-        If no 'until' argument is given all jobs are returned. This function
-        accepts datetime and timedelta instances as well as integers representing
-        epoch values.
-        If with_times is True a list of tuples consisting of the job instance and
-        it's scheduled execution time is returned.
+        Returns a list of job instances that will be queued until the given
+        time. If no 'until' argument is given all jobs are returned.
+
+        If with_times is True, a list of tuples consisting of the job instance
+        and it's scheduled execution time is returned.
+
         If offset and length are specified, a slice of the list starting at the
-        specified zero-based offset and of the specified length will be returned.
-        If either of offset or length is specified, then both must be, or redis-py
-        will raise an exception (see docs for zrangebyscore from redis-py).
+        specified zero-based offset of the specified length will be returned.
+
+        If either of offset or length is specified, then both must be, or
+        an exception will be raised.
         """
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
