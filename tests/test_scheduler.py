@@ -85,6 +85,15 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual('description', job_from_queue.description)
 
+    def test_create_job_with_timeout(self):
+        """
+        Ensure that timeout is passed to RQ.
+        """
+        timeout = 13
+        job = self.scheduler._create_job(say_hello, timeout=13, args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(timeout, job_from_queue.timeout)
+
     def test_job_not_persisted_if_commit_false(self):
         """
         Ensure jobs are only saved to Redis if commit=True.
