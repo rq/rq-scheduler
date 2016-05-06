@@ -153,6 +153,31 @@ class TestScheduler(RQTestCase):
         self.assertIsInstance(self.scheduler.get_jobs(with_times=True)[0][1], datetime)
         self.assertNotIn(job, self.scheduler.get_jobs(timedelta(minutes=59, seconds=59)))
 
+    def test_get_jobs_slice(self):
+        """
+        Ensure get_jobs() returns the appropriate slice of all jobs using offset and length.
+        """
+        now = datetime.utcnow()
+        future_time = now + timedelta(hours=1)
+        future_test_time = now + timedelta(minutes=59, seconds=59)
+
+        # We queue each job a second later than the previous one, otherwise Redis
+        # will return jobs that have the same enqueue time in lexicographical order
+        # (which is almost definitely not the order in which we enqueued them)
+        now_jobs = [self.scheduler.enqueue_at(now+timedelta(seconds=x), say_hello) for x in range(15)]
+        future_jobs = [self.scheduler.enqueue_at(future_time+timedelta(seconds=x), say_hello) for x in range(15)]
+
+        expected_slice = now_jobs[5:] + future_jobs[:10]   # last 10 from now_jobs and first 10 from future_jobs
+        expected_until_slice = now_jobs[5:]                # last 10 from now_jobs
+
+        jobs = self.scheduler.get_jobs()
+        jobs_slice = self.scheduler.get_jobs(offset=5, length=20)
+        jobs_until_slice = self.scheduler.get_jobs(future_test_time, offset=5, length=20)
+
+        self.assertEqual(now_jobs + future_jobs, jobs)
+        self.assertEqual(expected_slice, jobs_slice)
+        self.assertEqual(expected_until_slice, jobs_until_slice)
+
     def test_get_jobs_to_queue(self):
         """
         Ensure that jobs scheduled the future are not queued.

@@ -240,7 +240,7 @@ class Scheduler(object):
         until = rationalize_until(until)
         return self.connection.zcount(self.scheduled_jobs_key, 0, until)
 
-    def get_jobs(self, until=None, with_times=False):
+    def get_jobs(self, until=None, with_times=False, offset=None, length=None):
         """
         Returns a list of job instances that will be queued until the given time.
         If no 'until' argument is given all jobs are returned. This function
@@ -248,6 +248,10 @@ class Scheduler(object):
         epoch values.
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
+        If offset and length are specified, a slice of the list starting at the
+        specified zero-based offset and of the specified length will be returned.
+        If either of offset or length is specified, then both must be, or redis-py
+        will raise an exception (see docs for zrangebyscore from redis-py).
         """
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
@@ -255,7 +259,8 @@ class Scheduler(object):
         until = rationalize_until(until)
         job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0,
                                                 until, withscores=with_times,
-                                                score_cast_func=epoch_to_datetime)
+                                                score_cast_func=epoch_to_datetime,
+                                                start=offset, num=length)
         if not with_times:
             job_ids = zip(job_ids, repeat(None))
         jobs = []
