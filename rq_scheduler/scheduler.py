@@ -3,6 +3,7 @@ import signal
 import time
 import warnings
 
+from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import repeat
 
@@ -12,7 +13,7 @@ from rq.queue import Queue
 
 from redis import WatchError
 
-from .utils import from_unix, to_unix, get_next_scheduled_time
+from .utils import from_unix, to_unix, get_next_scheduled_time, rationalize_until
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +230,16 @@ class Scheduler(object):
                         raise ValueError('Job not in scheduled jobs queue')
                     continue
 
+    def count(self, until=None):
+        """
+        Returns the total number of jobs that are scheduled for all queues. This function
+        accepts datetime and timedelta instances as well as integers representing epoch
+        values.
+        """
+
+        until = rationalize_until(until)
+        return self.connection.zcount(self.scheduled_jobs_key, 0, until)
+
     def get_jobs(self, until=None, with_times=False):
         """
         Returns a list of job instances that will be queued until the given time.
@@ -241,12 +252,7 @@ class Scheduler(object):
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
 
-        if until is None:
-            until = "+inf"
-        elif isinstance(until, datetime):
-            until = to_unix(until)
-        elif isinstance(until, timedelta):
-            until = to_unix((datetime.utcnow() + until))
+        until = rationalize_until(until)
         job_ids = self.connection.zrangebyscore(self.scheduled_jobs_key, 0,
                                                 until, withscores=with_times,
                                                 score_cast_func=epoch_to_datetime)

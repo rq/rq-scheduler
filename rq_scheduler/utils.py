@@ -1,7 +1,7 @@
 import calendar
 import croniter
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from rq.utils import ColorizingStreamHandler
@@ -35,3 +35,18 @@ def setup_loghandlers(level='INFO'):
         handler = ColorizingStreamHandler()
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+
+def rationalize_until(until=None):
+    """
+    Rationalizes the `until` argument used by other functions. This function
+    accepts datetime and timedelta instances as well as integers representing
+    epoch values.
+    """
+    if until is None:
+        until = "+inf"
+    elif isinstance(until, datetime):
+        until = to_unix(until)
+    elif isinstance(until, timedelta):
+        until = to_unix((datetime.utcnow() + until))
+    return until
