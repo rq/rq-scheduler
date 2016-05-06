@@ -101,7 +101,9 @@ class Scheduler(object):
         scheduler = Scheduler(queue_name='default', connection=redis)
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
-        job = self._create_job(func, args=args, kwargs=kwargs)
+        timeout = kwargs.pop('timeout', None)
+
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -113,7 +115,9 @@ class Scheduler(object):
         The job's scheduled execution time will be calculated by adding the timedelta
         to datetime.utcnow().
         """
-        job = self._create_job(func, args=args, kwargs=kwargs)
+        timeout = kwargs.pop('timeout', None)
+
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
