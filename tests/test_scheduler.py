@@ -401,6 +401,10 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(datetime.utcnow(), say_hello)
         job.cancel()
         self.scheduler.get_jobs_to_queue()
+        self.assertIn(job.id, tl(self.testconn.zrange(
+            self.scheduler.scheduled_jobs_key, 0, 1)))
+        job.delete()
+        self.scheduler.get_jobs_to_queue()
         self.assertNotIn(job.id, tl(self.testconn.zrange(
             self.scheduler.scheduled_jobs_key, 0, 1)))
 
