@@ -485,6 +485,17 @@ class TestScheduler(RQTestCase):
         self.assertRaises(SystemExit, self.scheduler.run)
         thread.join()
 
+    def test_run_burst(self):
+        """
+        Check burst mode of Scheduler.run().
+        """
+        now = datetime.utcnow()
+        job = self.scheduler.enqueue_at(now, say_hello)
+        self.assertIn(job, self.scheduler.get_jobs_to_queue())
+        self.assertEqual(len(self.scheduler.get_jobs()), 1)
+        self.scheduler.run(burst=True)
+        self.assertEqual(len(self.scheduler.get_jobs()), 0)
+
     def test_scheduler_w_o_explicit_connection(self):
         """
         Ensure instantiating Scheduler w/o explicit connection works.

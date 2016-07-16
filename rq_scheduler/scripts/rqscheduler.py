@@ -12,6 +12,7 @@ from rq_scheduler.utils import setup_loghandlers
 
 def main():
     parser = argparse.ArgumentParser(description='Runs RQ scheduler')
+    parser.add_argument('-b', '--burst', action='store_true', default=False, help='Run in burst mode (quit after all work is done)')
     parser.add_argument('-H', '--host', default=os.environ.get('RQ_REDIS_HOST', 'localhost'), help="Redis host")
     parser.add_argument('-p', '--port', default=int(os.environ.get('RQ_REDIS_PORT', 6379)), type=int, help="Redis port number")
     parser.add_argument('-d', '--db', default=int(os.environ.get('RQ_REDIS_DB', 0)), type=int, help="Redis database")
@@ -25,18 +26,18 @@ def main():
             queue (in seconds, can be floating-point for more precision).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
-    
+
     args = parser.parse_args()
-    
+
     if args.path:
         sys.path = args.path.split(':') + sys.path
-    
+
     if args.pid:
         pid = str(os.getpid())
         filename = args.pid
         with open(filename, 'w') as f:
             f.write(pid)
-    
+
     if args.url is not None:
         connection = Redis.from_url(args.url)
     else:
@@ -49,7 +50,7 @@ def main():
     setup_loghandlers(level)
 
     scheduler = Scheduler(connection=connection, interval=args.interval)
-    scheduler.run()
+    scheduler.run(burst=args.burst)
 
 if __name__ == '__main__':
     main()
