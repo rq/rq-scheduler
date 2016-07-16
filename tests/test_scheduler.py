@@ -85,6 +85,15 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual('description', job_from_queue.description)
 
+    def test_create_job_with_timeout(self):
+        """
+        Ensure that timeout is passed to RQ.
+        """
+        timeout = 13
+        job = self.scheduler._create_job(say_hello, timeout=13, args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(timeout, job_from_queue.timeout)
+
     def test_job_not_persisted_if_commit_false(self):
         """
         Ensure jobs are only saved to Redis if commit=True.
@@ -104,6 +113,16 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(scheduled_time))
 
+    def test_enqueue_at_sets_timeout(self):
+        """
+        Ensure that a job scheduled via enqueue_at can be created with
+        a custom timeout.
+        """
+        timeout = 13
+        job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, timeout=timeout)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.timeout, timeout)
+
     def test_enqueue_in(self):
         """
         Ensure that jobs have the right scheduled time.
@@ -119,6 +138,16 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_in(time_delta, say_hello)
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(right_now + time_delta))
+
+    def test_enqueue_in_sets_timeout(self):
+        """
+        Ensure that a job scheduled via enqueue_in can be created with
+        a custom timeout.
+        """
+        timeout = 13
+        job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, timeout=timeout)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.timeout, timeout)
 
     def test_count(self):
         now = datetime.utcnow()

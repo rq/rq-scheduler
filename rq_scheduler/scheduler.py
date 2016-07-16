@@ -67,7 +67,8 @@ class Scheduler(object):
         signal.signal(signal.SIGTERM, stop)
 
     def _create_job(self, func, args=None, kwargs=None, commit=True,
-                    result_ttl=None, ttl=None, id=None, description=None, queue_name=None):
+                    result_ttl=None, ttl=None, id=None, description=None,
+                    queue_name=None, timeout=None):
         """
         Creates an RQ job and saves it to Redis.
         """
@@ -76,7 +77,8 @@ class Scheduler(object):
         if kwargs is None:
             kwargs = {}
         job = Job.create(func, args=args, connection=self.connection,
-                         kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id, description=description)
+                         kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
+                         description=description, timeout=timeout)
         job.origin = queue_name or self.queue_name
         if commit:
             job.save()
@@ -99,7 +101,9 @@ class Scheduler(object):
         scheduler = Scheduler(queue_name='default', connection=redis)
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
-        job = self._create_job(func, args=args, kwargs=kwargs)
+        timeout = kwargs.pop('timeout', None)
+
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -111,7 +115,9 @@ class Scheduler(object):
         The job's scheduled execution time will be calculated by adding the timedelta
         to datetime.utcnow().
         """
-        job = self._create_job(func, args=args, kwargs=kwargs)
+        timeout = kwargs.pop('timeout', None)
+
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
@@ -128,7 +134,8 @@ class Scheduler(object):
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, ttl=ttl, id=id,
-                               description=description, queue_name=queue_name)
+                               description=description, queue_name=queue_name,
+                               timeout=timeout)
 
         if interval is not None:
             job.meta['interval'] = int(interval)
@@ -136,8 +143,6 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
-        if timeout is not None:
-            job.timeout = timeout
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
@@ -154,14 +159,13 @@ class Scheduler(object):
         # Set result_ttl to -1, as jobs scheduled via cron are periodic ones.
         # Otherwise the job would expire after 500 sec.
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=-1, id=id, queue_name=queue_name, description=description)
+                               result_ttl=-1, id=id, queue_name=queue_name,
+                               description=description, timeout=timeout)
 
         job.meta['cron_string'] = cron_string
 
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
-        if timeout is not None:
-            job.timeout = timeout
 
         job.save()
 
