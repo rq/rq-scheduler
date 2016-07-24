@@ -186,6 +186,7 @@ The script accepts these arguments:
 * ``-p`` or ``--port``: port to connect to
 * ``-d`` or ``--db``: Redis db to use
 * ``-P`` or ``--password``: password to connect to Redis
+* ``-b`` or ``--burst``: runs in burst mode (enqueue scheduled jobs whose execution time is in the past and quit)
 
 The arguments pull default values from environment variables with the
 same names but with a prefix of ``RQ_REDIS_``.
