@@ -195,6 +195,12 @@ same names but with a prefix of ``RQ_REDIS_``.
 Changelog
 =========
 
+Version 0.7.0
+-------------
+* You can now run ``rq-schduler`` in burst mode with ``rqscheduler --burst`. Thanks @jezdez!
+* ``rq-scheduler`` now requires RQ >= 0.6
+* `scheduler.enqueue_at`` and ``scheduler.enqueue_in`` now accepts ``timeout`` argument. Thanks @lechup!
+
 Version 0.6.1
 -------------
 * Added `scheduler.count()`. Thanks @smaccona!
