@@ -161,9 +161,11 @@ execution using the familiar python ``in`` operator::
 Canceling a job
 ---------------
 
-To cancel a job, simply do:
+To cancel a job, simply pass a ``Job`` or a job id to ``scheduler.cancel``::
 
     scheduler.cancel(job)
+    
+Note that this method returns ``None`` whether the specified job was found or not.
 
 ---------------------
 Running the scheduler
