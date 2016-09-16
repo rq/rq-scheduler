@@ -542,3 +542,15 @@ class TestScheduler(RQTestCase):
 
         #all jobs must have been scheduled during 1 second
         self.assertEqual(len(scheduler.get_jobs()), 0)
+
+    def test_no_two_schedulers_acquire_lock(self):
+        """
+        Ensure that no two schedulers can acquire the lock at the
+        same time.
+        """
+        key = Scheduler.scheduler_key
+        self.assertNotIn(key, tl(self.testconn.keys('*')))
+        scheduler1 = Scheduler(connection=self.testconn, interval=20)
+        scheduler2 = Scheduler(connection=self.testconn, interval=20)
+        self.assertTrue(scheduler1._acquire_lock())
+        self.assertFalse(scheduler2._acquire_lock())

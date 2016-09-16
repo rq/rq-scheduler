@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
+    scheduler_lock_key = 'rq:scheduler:lock'
 
     def __init__(self, queue_name='default', interval=60, connection=None):
         from rq.connections import resolve_connection
@@ -27,9 +28,11 @@ class Scheduler(object):
         self._interval = interval
         self.log = logger
 
-    def register_birth(self):
-        if self.connection.exists(self.scheduler_key) and \
-                not self.connection.hexists(self.scheduler_key, 'death'):
+    def register_birth(self, retry=False):
+        self._lock_acquired = self._acquire_lock()
+        if retry:
+            self._retry_lock()
+        elif not self._lock_acquired:
             raise ValueError("There's already an active RQ scheduler")
         key = self.scheduler_key
         now = time.time()
@@ -47,6 +50,7 @@ class Scheduler(object):
         with self.connection._pipeline() as p:
             p.hset(self.scheduler_key, 'death', time.time())
             p.expire(self.scheduler_key, 60)
+            p.delete(self.scheduler_lock_key)
             p.execute()
 
     def _install_signal_handlers(self):
@@ -323,17 +327,41 @@ class Scheduler(object):
         for job in jobs:
             self.enqueue_job(job)
 
-        # Refresh scheduler key's expiry
+        # Refresh scheduler keys' expiry
         self.connection.expire(self.scheduler_key, int(self._interval) + 10)
+        self.connection.expire(self.scheduler_lock_key, int(self._interval) + 10)
         return jobs
 
-    def run(self, burst=False):
+    def _acquire_lock(self):
+        """
+        Acquire lock before scheduling jobs to prevent another scheduler
+        from scheduling jobs at the same time.
+        This function returns True if a lock is acquired. False otherwise.
+        """
+        key = self.scheduler_lock_key
+        now = time.time()
+        expires = int(self._interval) + 10
+        return self.connection.set(key, now, ex=expires, nx=True)
+
+    def _retry_lock(self):
+        """
+        Try to acquire a lock until acquired, sleeping between each iteration.
+        """
+        while not self._lock_acquired:
+            self.log.info("There's already an active RQ scheduler, retrying in 10 seconds...")
+            try:
+                time.sleep(10)
+            except KeyboardInterrupt:
+                raise SystemExit()
+            self._lock_acquired = self._acquire_lock()
+
+    def run(self, burst=False, retry=False):
         """
         Periodically check whether there's any job that should be put in the queue (score
         lower than current time).
         """
         self.log.info('Running RQ scheduler...')
-        self.register_birth()
+        self.register_birth(retry=retry)
         self._install_signal_handlers()
         try:
             while True:

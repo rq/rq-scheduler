@@ -26,6 +26,8 @@ def main():
             queue (in seconds, can be floating-point for more precision).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
+    parser.add_argument('--retry', action='store_true', default=False,
+                        help='Tell the scheduler to retry the registration process.')
 
     args = parser.parse_args()
 
@@ -50,7 +52,7 @@ def main():
     setup_loghandlers(level)
 
     scheduler = Scheduler(connection=connection, interval=args.interval)
-    scheduler.run(burst=args.burst)
+    scheduler.run(burst=args.burst, retry=args.retry)
 
 if __name__ == '__main__':
     main()
