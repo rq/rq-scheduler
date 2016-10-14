@@ -124,7 +124,7 @@ class Scheduler(object):
         return job
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                 interval=None, repeat=None, repeat=None, result_ttl=None, ttl=None,
+                 interval=None, repeat=None, uniq=None, result_ttl=None, ttl=None,
                  timeout=None, id=None, description=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
