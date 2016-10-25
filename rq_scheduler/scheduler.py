@@ -337,10 +337,12 @@ class Scheduler(object):
         self._install_signal_handlers()
         try:
             while True:
+                start_time = time.time()
                 self.enqueue_jobs()
                 if burst:
                     self.log.info('RQ scheduler done, quitting')
                     break
-                time.sleep(self._interval)
+                # Time has already elapsed while enqueing jobs, so don't wait too long.
+                time.sleep(self._interval - (time.time() - start_time))
         finally:
             self.register_death()
