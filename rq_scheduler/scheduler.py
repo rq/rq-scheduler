@@ -102,8 +102,9 @@ class Scheduler(object):
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
         timeout = kwargs.pop('timeout', None)
+        job_id = kwargs.pop('job_id', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -116,8 +117,9 @@ class Scheduler(object):
         to datetime.utcnow().
         """
         timeout = kwargs.pop('timeout', None)
+        job_id = kwargs.pop('job_id', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
