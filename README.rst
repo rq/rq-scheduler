@@ -189,6 +189,7 @@ The script accepts these arguments:
 * ``-d`` or ``--db``: Redis db to use
 * ``-P`` or ``--password``: password to connect to Redis
 * ``-b`` or ``--burst``: runs in burst mode (enqueue scheduled jobs whose execution time is in the past and quit)
+* ``-i INTERVAL`` or ``--interval INTERVAL``: How often the scheduler checks for new jobs to add to the queue (in seconds, can be floating-point for more precision).
 
 The arguments pull default values from environment variables with the
 same names but with a prefix of ``RQ_REDIS_``.
