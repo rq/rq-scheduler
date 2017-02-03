@@ -369,6 +369,7 @@ class Scheduler(object):
 
         try:
             while True:
+
                 start_time = time.time()
                 if self.acquire_lock():
                     self.enqueue_jobs()
