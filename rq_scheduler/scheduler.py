@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class Scheduler(object):
+    scheduler_key = 'rq:scheduler'
+    scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
 
     def __init__(self, queue_name='default', interval=60, connection=None, scheduler_key=None, scheduled_jobs_key=None):
         from rq.connections import resolve_connection
@@ -26,8 +28,11 @@ class Scheduler(object):
         self.log = logger
         self._lock_acquired = False
 
-        self.scheduler_key = scheduler_key or 'rq:scheduler'
-        self.scheduled_jobs_key = scheduled_jobs_key or 'rq:scheduler:scheduled_jobs'
+        if scheduler_key:
+            self.scheduler_key = scheduler_key
+
+        if scheduled_jobs_key:
+            self.scheduled_jobs_key = scheduled_jobs_key
 
     def register_birth(self):
         if self.connection.exists(self.scheduler_key) and \
