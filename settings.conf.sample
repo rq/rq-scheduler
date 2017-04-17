@@ -1,0 +1,1 @@
+--host redis --db 1 --interval 1
