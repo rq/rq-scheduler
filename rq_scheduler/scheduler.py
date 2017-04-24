@@ -28,6 +28,18 @@ class Scheduler(object):
         self.log = logger
         self._lock_acquired = False
 
+    def __enter__(self):
+        while True:
+            try:
+                self.register_birth()
+                return self
+            except ValueError:  # assume register_birth failed
+                self.log.info('Waiting for registering birth...')
+                time.sleep(self._interval)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.register_death()
+
     def register_birth(self):
         if self.connection.exists(self.scheduler_key) and \
                 not self.connection.hexists(self.scheduler_key, 'death'):
@@ -364,7 +376,6 @@ class Scheduler(object):
         """
         self.log.info('Running RQ scheduler...')
 
-        self.register_birth()
         self._install_signal_handlers()
 
         try:
@@ -384,4 +395,3 @@ class Scheduler(object):
                 time.sleep(self._interval - (time.time() - start_time))
         finally:
             self.remove_lock()
-            self.register_death()
