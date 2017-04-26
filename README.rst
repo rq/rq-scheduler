@@ -218,6 +218,10 @@ same names but with a prefix of ``RQ_REDIS_``.
 Changelog
 =========
 
+Version 0.7.0
+
+* Added `timeout` kwarg to `scheduler.enqueue_in` and `scheduler.enqueue_at`. Thanks @lechup!
+
 Version 0.6.1
 -------------
 * Added `scheduler.count()`. Thanks @smaccona!
