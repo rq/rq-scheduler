@@ -369,6 +369,7 @@ class Scheduler(object):
 
         try:
             while True:
+                self.log.debug("Checking for jobs")
 
                 start_time = time.time()
                 if self.acquire_lock():
@@ -378,10 +379,15 @@ class Scheduler(object):
                         self.log.info('RQ scheduler done, quitting')
                         break
                 else:
-                    self.log.info('Waiting for lock...')
+                    self.log.warning('Lock already taken - skipping run')
 
                 # Time has already elapsed while enqueuing jobs, so don't wait too long.
-                time.sleep(self._interval - (time.time() - start_time))
+                seconds_elapsed_since_start = time.time() - start_time
+                seconds_until_next_scheduled_run = self._interval - seconds_elapsed_since_start
+                # ensure we have a non-negative number
+                if seconds_until_next_scheduled_run > 0:
+                    self.log.debug("sleeping %ssec" % seconds_until_next_scheduled_run)
+                    time.sleep(seconds_until_next_scheduled_run)
         finally:
             self.remove_lock()
             self.register_death()
