@@ -373,6 +373,7 @@ class Scheduler(object):
                 start_time = time.time()
                 if self.acquire_lock():
                     self.enqueue_jobs()
+                    self.remove_lock()
 
                     if burst:
                         self.log.info('RQ scheduler done, quitting')
@@ -381,6 +382,7 @@ class Scheduler(object):
                     self.log.info('Waiting for lock...')
 
                 # Time has already elapsed while enqueuing jobs, so don't wait too long.
+                
                 time.sleep(self._interval - (time.time() - start_time))
         finally:
             self.remove_lock()
