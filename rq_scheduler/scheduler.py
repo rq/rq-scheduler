@@ -97,12 +97,13 @@ class Scheduler(object):
     @staticmethod
     def _pop_args_for_create_job(mykw):
         "Take input dictionary and pop out args which _create_job accepts."
+        key_convert_table = {'job_id': 'id'}
 
         cj_kw = {}
-        for name in ['result_ttl', 'ttl', 'id', 'description',
+        for name in ['result_ttl', 'ttl', 'job_id', 'description',
                      'queue_name', 'timeout']:
             if name in mykw:
-                cj_kw[name] = mykw.pop(name)
+                cj_kw[key_convert_table.get(name, name)] = mykw.pop(name)
         return cj_kw
 
     def _create_job(self, func, args=None, kwargs=None, commit=True,
