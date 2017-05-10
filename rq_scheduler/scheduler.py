@@ -94,6 +94,18 @@ class Scheduler(object):
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
 
+    @staticmethod
+    def _pop_args_for_create_job(mykw):
+        "Take input dictionary and pop out args which _create_job accepts."
+        key_convert_table = {'job_id': 'id'}
+
+        cj_kw = {}
+        for name in ['result_ttl', 'ttl', 'job_id', 'description',
+                     'queue_name', 'timeout']:
+            if name in mykw:
+                cj_kw[key_convert_table.get(name, name)] = mykw.pop(name)
+        return cj_kw
+
     def _create_job(self, func, args=None, kwargs=None, commit=True,
                     result_ttl=None, ttl=None, id=None, description=None,
                     queue_name=None, timeout=None):
@@ -129,10 +141,9 @@ class Scheduler(object):
         scheduler = Scheduler(queue_name='default', connection=redis)
         scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
         """
-        timeout = kwargs.pop('timeout', None)
-        job_id = kwargs.pop('job_id', None)
+        cj_kw = self._pop_args_for_create_job(kwargs)
+        job = self._create_job(func, args=args, kwargs=kwargs, **cj_kw)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -144,10 +155,9 @@ class Scheduler(object):
         The job's scheduled execution time will be calculated by adding the timedelta
         to datetime.utcnow().
         """
-        timeout = kwargs.pop('timeout', None)
-        job_id = kwargs.pop('job_id', None)
+        cj_kw = self._pop_args_for_create_job(kwargs)
+        job = self._create_job(func, args=args, kwargs=kwargs, **cj_kw)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
