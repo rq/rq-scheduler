@@ -138,6 +138,17 @@ class Scheduler(object):
                               job.id)
         return job
 
+    def enqueue_now(self, func, *args, **kwargs):
+        """
+        Schedules a job to run immediately
+        """
+        now = datetime.utcnow()
+        job = self._create_job(func, args=args, kwargs=kwargs)
+        self.connection._zadd(self.scheduled_jobs_key,
+                              to_unix(now),
+                              job.id)
+        return job
+
     def enqueue_in(self, time_delta, func, *args, **kwargs):
         """
         Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
