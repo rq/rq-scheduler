@@ -185,7 +185,8 @@ class Scheduler(object):
         Schedule a cronjob
         """
         scheduled_time = get_next_scheduled_time(cron_string)
-
+        
+        timeout = kwargs.pop('timeout', None)
         # Set result_ttl to -1, as jobs scheduled via cron are periodic ones.
         # Otherwise the job would expire after 500 sec.
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
