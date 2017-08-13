@@ -131,8 +131,11 @@ class Scheduler(object):
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
+        job_ttl = kwargs.pop('job_ttl', None)
+        job_result_ttl = kwargs.pop('job_result_ttl', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
+                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -146,8 +149,11 @@ class Scheduler(object):
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
+        job_ttl = kwargs.pop('job_ttl', None)
+        job_result_ttl = kwargs.pop('job_result_ttl', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
+                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)

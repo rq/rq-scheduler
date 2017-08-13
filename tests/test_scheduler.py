@@ -148,6 +148,22 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_id=job_id)
         self.assertEqual(job.id, job_id)
 
+    def test_enqueue_at_sets_job_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_at can be created with a custom job ttl.
+        """
+        job_ttl = 123456789
+        job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_ttl=job_ttl)
+        self.assertEqual(job.ttl, job_ttl)
+
+    def test_enqueue_at_sets_job_result_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_at can be created with a custom result ttl.
+        """
+        job_result_ttl = 1234567890
+        job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_result_ttl=job_result_ttl)
+        self.assertEqual(job.result_ttl, job_result_ttl)
+
     def test_enqueue_in(self):
         """
         Ensure that jobs have the right scheduled time.
@@ -182,6 +198,22 @@ class TestScheduler(RQTestCase):
         job_id = 'test_id'
         job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_id=job_id)
         self.assertEqual(job.id, job_id)
+
+    def test_enqueue_in_sets_job_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_in can be created with a custom job ttl.
+        """
+        job_ttl = 123456789
+        job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_ttl=job_ttl)
+        self.assertEqual(job.ttl, job_ttl)
+
+    def test_enqueue_in_sets_job_result_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_in can be created with a custom result ttl.
+        """
+        job_result_ttl = 1234567890
+        job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_result_ttl=job_result_ttl)
+        self.assertEqual(job.result_ttl, job_result_ttl)
 
     def test_count(self):
         now = datetime.utcnow()
