@@ -120,6 +120,8 @@ This is how you do it
         queue_name=queue_name       # In which queue the job should be put in
     )
 
+    scheduler.cron_once  # cron only once if all configuration is identical, return False if alreay cron
+
 -------------------------
 Retrieving scheduled jobs
 -------------------------

@@ -1,10 +1,12 @@
 import logging
 import signal
 import time
+import inspect
 
 from datetime import datetime
 from itertools import repeat
 
+from rq.compat import as_text, string_types
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
@@ -209,6 +211,51 @@ class Scheduler(object):
                               to_unix(scheduled_time),
                               job.id)
         return job
+
+    def cron_once(self, cron_string, func, args=None, kwargs=None, repeat=None,
+                  queue_name=None, timeout=None, description=None):
+        # get cron job ids by next scheduled time
+        scheduled_time = to_unix(get_next_scheduled_time(cron_string))
+        job_ids = self.connection\
+            .zrangebyscore(self.scheduled_jobs_key,
+                           scheduled_time,
+                           scheduled_time)
+        if args is None:
+            args = ()
+        if kwargs is None:
+            kwargs = {}
+
+        # caculate func name
+        func_name = ''
+        if inspect.isfunction(func) or inspect.isbuiltin(func):
+            func_name = '{0}.{1}'.format(func.__module__, func.__name__)
+        elif isinstance(func, string_types):
+            func_name = as_text(func)
+        else:
+            raise NotImplemented("cron with instance is not supported")
+
+        for job_id in job_ids:
+            job = Job.fetch(job_id, connection=self.connection)
+            # is the same job config?
+            if job.func_name != func_name or\
+               job.meta.get('cron_string', None) != cron_string or\
+               job.args != args or\
+               job.kwargs != kwargs or\
+               job.origin != queue_name or\
+               job.meta.get('repeat', None) != repeat:
+                continue
+            return False
+        self.cron(
+            cron_string,
+            func=func,
+            args=args,
+            kwargs=kwargs,
+            repeat=repeat,
+            queue_name=queue_name,
+            timeout=timeout,
+            description=description
+        )
+        return True
 
     def cancel(self, job):
         """
