@@ -3,6 +3,7 @@ import os
 import signal
 import time
 from threading import Thread
+from dateutil.tz import gettz
 
 from rq import Queue
 from rq.compat import as_text
@@ -383,6 +384,22 @@ class TestScheduler(RQTestCase):
         assert datetime_time.minute == 1
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
+
+    def test_crontab_persisted_correctly_with_local_timezone(self):
+        """
+        Ensure that crontab attribute gets correctly saved in Redis when using local TZ.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.cron("0 15 * * *", say_hello, use_local_timezone=True)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['cron_string'], "0 15 * * *")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        expected_datetime_in_local_tz = datetime.now().replace(hour=15,minute=0,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(gettz("UTC")).time()
 
     def test_crontab_sets_timeout(self):
         """
