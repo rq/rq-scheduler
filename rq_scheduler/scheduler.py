@@ -218,11 +218,11 @@ class Scheduler(object):
         return job
 
     def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
-             queue_name=None, id=None, timeout=None, description=None, meta=None):
+             queue_name=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False):
         """
         Schedule a cronjob
         """
-        scheduled_time = get_next_scheduled_time(cron_string)
+        scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
 
         # Set result_ttl to -1, as jobs scheduled via cron are periodic ones.
         # Otherwise the job would expire after 500 sec.
@@ -231,6 +231,7 @@ class Scheduler(object):
                                description=description, timeout=timeout, meta=meta)
 
         job.meta['cron_string'] = cron_string
+        job.meta['use_local_timezone'] = use_local_timezone
 
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
@@ -355,6 +356,7 @@ class Scheduler(object):
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
         cron_string = job.meta.get('cron_string', None)
+        use_local_timezone = job.meta.get('use_local_timezone', None)
 
         # If job is a repeated job, decrement counter
         if repeat:
@@ -377,7 +379,7 @@ class Scheduler(object):
                 if job.meta['repeat'] == 0:
                     return
             self.connection.zadd(self.scheduled_jobs_key,
-                                  {job.id: to_unix(get_next_scheduled_time(cron_string))})
+                                  {job.id: to_unix(get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone))})
 
     def enqueue_jobs(self):
         """

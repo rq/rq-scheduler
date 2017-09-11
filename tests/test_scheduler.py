@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from dateutil.tz import gettz, tzlocal
 import os
 import signal
 import time
@@ -438,6 +439,40 @@ class TestScheduler(RQTestCase):
         assert datetime_time.minute == 1
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
+
+    def test_crontab_persisted_correctly_with_local_timezone(self):
+        """
+        Ensure that crontab attribute gets correctly saved in Redis when using local TZ.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.cron("0 15 * * *", say_hello, use_local_timezone=True)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['cron_string'], "0 15 * * *")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        expected_datetime_in_local_tz = datetime.now(tz=tzlocal()).replace(hour=15,minute=0,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(gettz("UTC")).time()
+
+    def test_crontab_rescheduled_correctly_with_local_timezone(self):
+        # Create a job with a cronjob_string
+        job = self.scheduler.cron("1 * * * *", say_hello, use_local_timezone=True)
+
+        # change crontab
+        job.meta['cron_string'] = "2 * * * *"
+
+        # enqueue the job
+        self.scheduler.enqueue_job(job)
+
+        self.assertIn(job.id,
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+
+        # check that new next scheduled time is set correctly
+        expected_next_scheduled_time = to_unix(get_next_scheduled_time("2 * * * *", use_local_timezone=True))
+        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
+                         expected_next_scheduled_time)
 
     def test_crontab_sets_timeout(self):
         """
