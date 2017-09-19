@@ -1,1 +1,6 @@
 *.pyc
+
+# IDE
+.idea
+*.paw
+*.sublime-*

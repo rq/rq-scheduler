@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
-    scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
+    scheduled_jobs_key = '{}:scheduled_jobs'.format(scheduler_key)
 
     def __init__(self, queue_name='default', interval=60, connection=None):
         from rq.connections import resolve_connection
@@ -28,30 +28,6 @@ class Scheduler(object):
         self.log = logger
         self._lock_acquired = False
 
-    def register_birth(self):
-        if self.connection.exists(self.scheduler_key) and \
-                not self.connection.hexists(self.scheduler_key, 'death'):
-            raise ValueError("There's already an active RQ scheduler")
-
-        key = self.scheduler_key
-        now = time.time()
-
-        with self.connection._pipeline() as p:
-            p.delete(key)
-            p.hset(key, 'birth', now)
-            # Set scheduler key to expire a few seconds after polling interval
-            # This way, the key will automatically expire if scheduler
-            # quits unexpectedly
-            p.expire(key, int(self._interval) + 10)
-            p.execute()
-
-    def register_death(self):
-        """Registers its own death."""
-        with self.connection._pipeline() as p:
-            p.hset(self.scheduler_key, 'death', time.time())
-            p.expire(self.scheduler_key, 60)
-            p.execute()
-
     def acquire_lock(self):
         """
         Acquire lock before scheduling jobs to prevent another scheduler
@@ -59,18 +35,20 @@ class Scheduler(object):
 
         This function returns True if a lock is acquired. False otherwise.
         """
-        key = '%s_lock' % self.scheduler_key
+        key = self.scheduler_key
         now = time.time()
         expires = int(self._interval) + 10
-        self._lock_acquired = self.connection.set(
-                key, now, ex=expires, nx=True)
+        if self._lock_acquired:
+            self.connection.expire(key, expires)
+        else:
+            self._lock_acquired = self.connection.set(key, now, ex=expires, nx=True)
         return self._lock_acquired
 
     def remove_lock(self):
         """
         Remove acquired lock.
         """
-        key = '%s_lock' % self.scheduler_key
+        key = self.scheduler_key
 
         if self._lock_acquired:
             self.connection.delete(key)
@@ -87,7 +65,6 @@ class Scheduler(object):
             and remove previously acquired lock and exit.
             """
             self.log.info('Shutting down RQ scheduler...')
-            self.register_death()
             self.remove_lock()
             raise SystemExit()
 
@@ -359,8 +336,11 @@ class Scheduler(object):
         for job in jobs:
             self.enqueue_job(job)
 
-        # Refresh scheduler key's expiry
+            # Refresh scheduler key's expiry if there are many jobs
+            self.connection.expire(self.scheduler_key, int(self._interval) + 10)
+
         self.connection.expire(self.scheduler_key, int(self._interval) + 10)
+
         return jobs
 
     def run(self, burst=False):
@@ -370,12 +350,10 @@ class Scheduler(object):
         """
         self.log.info('Running RQ scheduler...')
 
-        self.register_birth()
         self._install_signal_handlers()
 
         try:
             while True:
-
                 start_time = time.time()
                 if self.acquire_lock():
                     self.enqueue_jobs()
@@ -387,7 +365,10 @@ class Scheduler(object):
                     self.log.info('Waiting for lock...')
 
                 # Time has already elapsed while enqueuing jobs, so don't wait too long.
-                time.sleep(self._interval - (time.time() - start_time))
+                seconds_elapsed_since_start = time.time() - start_time
+                sleep_time = self._interval - seconds_elapsed_since_start
+                if sleep_time > 0:
+                    self.log.debug("Sleeping {0:.2f} seconds".format(sleep_time))
+                    time.sleep(sleep_time)
         finally:
             self.remove_lock()
-            self.register_death()
