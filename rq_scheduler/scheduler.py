@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
-    scheduled_jobs_key = '{}:scheduled_jobs'.format(scheduler_key)
+    scheduled_jobs_key = '{0}:scheduled_jobs'.format(scheduler_key)
 
     def __init__(self, queue_name='default', interval=60, connection=None):
         from rq.connections import resolve_connection
