@@ -116,6 +116,14 @@ class Scheduler(object):
         """
         Pushes a job to the scheduler queue. The scheduled queue is a Redis sorted
         set ordered by timestamp - which in this case is job's scheduled execution time.
+        
+        All args and kwargs are passed onto the job, except for the following kwarg
+        keys (which affect the job creation itself):
+        - timeout
+        - job_id
+        - job_ttl
+        - job_result_ttl
+        - job_description
 
         Usage:
 
@@ -133,9 +141,11 @@ class Scheduler(object):
         job_id = kwargs.pop('job_id', None)
         job_ttl = kwargs.pop('job_ttl', None)
         job_result_ttl = kwargs.pop('job_result_ttl', None)
+        job_description = kwargs.pop('job_description', None)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
-                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl)
+                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
+                               description=job_description)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -151,9 +161,11 @@ class Scheduler(object):
         job_id = kwargs.pop('job_id', None)
         job_ttl = kwargs.pop('job_ttl', None)
         job_result_ttl = kwargs.pop('job_result_ttl', None)
+        job_description = kwargs.pop('job_description', None)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
-                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl)
+                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
+                               description=job_description)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
