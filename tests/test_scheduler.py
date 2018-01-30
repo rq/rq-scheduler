@@ -304,6 +304,21 @@ class TestScheduler(RQTestCase):
         self.assertIn(job, queue.jobs)
         self.assertIn(queue, Queue.all())
 
+    def test_enqueue_job_with_queue(self):
+        """
+        Ensure that job is enqueued correctly when the scheduler is bound
+        to a queue object.
+        """
+        queue = Queue('foo', connection=self.testconn)
+        scheduler = Scheduler(connection=self.testconn, queue=queue)
+        job = scheduler._create_job(say_hello)
+        scheduler_queue = scheduler.get_queue_for_job(job)
+        self.assertEqual(queue, scheduler_queue)
+        scheduler.enqueue_job(job)
+        self.assertTrue(job.enqueued_at is not None)
+        self.assertIn(job, queue.jobs)
+        self.assertIn(queue, Queue.all())
+
     def test_job_membership(self):
         now = datetime.utcnow()
         job = self.scheduler.enqueue_at(now, say_hello)

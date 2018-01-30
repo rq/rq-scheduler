@@ -20,10 +20,14 @@ class Scheduler(object):
     scheduler_key = 'rq:scheduler'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
 
-    def __init__(self, queue_name='default', interval=60, connection=None):
+    def __init__(self, queue_name='default', queue=None, interval=60, connection=None):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
-        self.queue_name = queue_name
+        self._queue = queue
+        if self._queue is None:
+            self.queue_name = queue_name
+        else:
+            self.queue_name = self._queue.name
         self._interval = interval
         self.log = logger
         self._lock_acquired = False
@@ -109,7 +113,10 @@ class Scheduler(object):
         job = Job.create(func, args=args, connection=self.connection,
                          kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
                          description=description, timeout=timeout)
-        job.origin = queue_name or self.queue_name
+        if self._queue is not None:
+            job.origin = self._queue.name
+        else:
+            job.origin = queue_name or self.queue_name
         if commit:
             job.save()
         return job
@@ -324,6 +331,8 @@ class Scheduler(object):
         """
         Returns a queue to put job into.
         """
+        if self._queue is not None:
+            return self._queue
         key = '{0}{1}'.format(Queue.redis_queue_namespace_prefix, job.origin)
         return Queue.from_queue_key(key, connection=self.connection)
 
