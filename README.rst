@@ -2,12 +2,12 @@
 RQ Scheduler
 ============
 
-`RQ Scheduler <https://github.com/ui/rq-scheduler>`_ is a small package that
+`RQ Scheduler <https://github.com/rq/rq-scheduler>`_ is a small package that
 adds job scheduling capabilities to `RQ <https://github.com/nvie/rq>`_,
 a `Redis <http://redis.io/>`_ based Python queuing library.
 
-.. image:: https://travis-ci.org/ui/rq-scheduler.svg?branch=master
-    :target: https://travis-ci.org/ui/rq-scheduler
+.. image:: https://travis-ci.org/rq/rq-scheduler.svg?branch=master
+    :target: https://travis-ci.org/rq/rq-scheduler
 
 ============
 Requirements
