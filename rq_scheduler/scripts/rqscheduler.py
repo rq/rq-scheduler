@@ -52,8 +52,8 @@ def main():
         level = 'INFO'
     setup_loghandlers(level)
 
-    scheduler = Scheduler(connection=connection, interval=args.interval)
-    scheduler.run(burst=args.burst)
+    with Scheduler(connection=connection, interval=args.interval) as scheduler:
+        scheduler.run(burst=args.burst)
 
 if __name__ == '__main__':
     main()
