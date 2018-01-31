@@ -8,6 +8,7 @@ from itertools import repeat
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
+from rq.utils import backend_class
 
 from redis import WatchError
 
@@ -19,8 +20,11 @@ logger = logging.getLogger(__name__)
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
+    queue_class = Queue
+    job_class = Job
 
-    def __init__(self, queue_name='default', queue=None, interval=60, connection=None):
+    def __init__(self, queue_name='default', queue=None, interval=60, connection=None,
+                 job_class=None, queue_class=None):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self._queue = queue
@@ -31,6 +35,9 @@ class Scheduler(object):
         self._interval = interval
         self.log = logger
         self._lock_acquired = False
+        self.job_class = backend_class(self, 'job_class', override=job_class)
+        self.queue_class = backend_class(self, 'queue_class',
+                                         override=queue_class)
 
     def register_birth(self):
         self.log.info('Registering birth')
@@ -110,9 +117,10 @@ class Scheduler(object):
             args = ()
         if kwargs is None:
             kwargs = {}
-        job = Job.create(func, args=args, connection=self.connection,
-                         kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
-                         description=description, timeout=timeout)
+        job = self.job_class.create(
+                func, args=args, connection=self.connection,
+                kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
+                description=description, timeout=timeout)
         if self._queue is not None:
             job.origin = self._queue.name
         else:
@@ -125,7 +133,7 @@ class Scheduler(object):
         """
         Pushes a job to the scheduler queue. The scheduled queue is a Redis sorted
         set ordered by timestamp - which in this case is job's scheduled execution time.
-        
+
         All args and kwargs are passed onto the job, except for the following kwarg
         keys (which affect the job creation itself):
         - timeout
@@ -236,7 +244,7 @@ class Scheduler(object):
         Pulls a job from the scheduler queue. This function accepts either a
         job_id or a job instance.
         """
-        if isinstance(job, Job):
+        if isinstance(job, self.job_class):
             self.connection.zrem(self.scheduled_jobs_key, job.id)
         else:
             self.connection.zrem(self.scheduled_jobs_key, job)
@@ -247,7 +255,7 @@ class Scheduler(object):
         is scheduled for execution.
         """
         job_id = item
-        if isinstance(item, Job):
+        if isinstance(item, self.job_class):
             job_id = item.id
         return self.connection.zscore(self.scheduled_jobs_key, job_id) is not None
 
@@ -308,7 +316,7 @@ class Scheduler(object):
         for job_id, sched_time in job_ids:
             job_id = job_id.decode('utf-8')
             try:
-                job = Job.fetch(job_id, connection=self.connection)
+                job = self.job_class.fetch(job_id, connection=self.connection)
                 if with_times:
                     jobs.append((job, sched_time))
                 else:
@@ -333,8 +341,10 @@ class Scheduler(object):
         """
         if self._queue is not None:
             return self._queue
-        key = '{0}{1}'.format(Queue.redis_queue_namespace_prefix, job.origin)
-        return Queue.from_queue_key(key, connection=self.connection)
+        key = '{0}{1}'.format(self.queue_class.redis_queue_namespace_prefix,
+                              job.origin)
+        return self.queue_class.from_queue_key(
+                key, connection=self.connection, job_class=self.job_class)
 
     def enqueue_job(self, job):
         """
