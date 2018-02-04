@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.8.1 (2018-02-04)
+* Fixed packaging error
+
 ## Version 0.8.0 (2018-02-04)
 * Added support for custom `Job` and `Queue` classes. Thanks @skirsdeda!
 * You can now pass in a `Queue` object when instantiating the scheduler as such `Scheduler(queue=queue)`. Thanks @peergradeio!
