@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.7.0 (2018-02-04)
+## Version 0.8.0 (2018-02-04)
 * Added support for custom `Job` and `Queue` classes. Thanks @skirsdeda!
 * You can now pass in a `Queue` object when instantiating the scheduler as such `Scheduler(queue=queue)`. Thanks @peergradeio!
 * Fixes a crash that happens when the scheduler runs for longer than sleep interval. Thanks @chaffeqa!
