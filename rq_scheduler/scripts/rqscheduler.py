@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
     parser.add_argument('-j', '--job-class', help='Custom RQ Job class')
-    parser.add_argument('-q', '--queue-class', help='Custom RQ Queue class')
+    parser.add_argument('-cq', '--queue-class', help='Custom RQ Queue class')
 
     args = parser.parse_args()
 
