@@ -18,7 +18,7 @@ def main():
     parser.add_argument('-d', '--db', default=int(os.environ.get('RQ_REDIS_DB', 0)), type=int, help="Redis database")
     parser.add_argument('-P', '--password', default=os.environ.get('RQ_REDIS_PASSWORD'), help="Redis password")
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Show more output')
-    parser.add_argument('--quiet', '-q', action='store_true', default=False, help='Show less output')
+    parser.add_argument('--quiet', action='store_true', default=False, help='Show less output')
     parser.add_argument('--url', '-u', default=os.environ.get('RQ_REDIS_URL')
         , help='URL describing Redis connection details. \
             Overrides other connection arguments if supplied.')
@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
     parser.add_argument('-j', '--job-class', help='Custom RQ Job class')
-    parser.add_argument('-c', '--queue-class', help='Custom RQ Queue class')
+    parser.add_argument('-q', '--queue-class', help='Custom RQ Queue class')
 
     args = parser.parse_args()
 
