@@ -148,6 +148,22 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_id=job_id)
         self.assertEqual(job.id, job_id)
 
+    def test_enqueue_at_sets_job_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_at can be created with a custom job ttl.
+        """
+        job_ttl = 123456789
+        job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_ttl=job_ttl)
+        self.assertEqual(job.ttl, job_ttl)
+
+    def test_enqueue_at_sets_job_result_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_at can be created with a custom result ttl.
+        """
+        job_result_ttl = 1234567890
+        job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_result_ttl=job_result_ttl)
+        self.assertEqual(job.result_ttl, job_result_ttl)
+
     def test_enqueue_in(self):
         """
         Ensure that jobs have the right scheduled time.
@@ -182,6 +198,22 @@ class TestScheduler(RQTestCase):
         job_id = 'test_id'
         job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_id=job_id)
         self.assertEqual(job.id, job_id)
+
+    def test_enqueue_in_sets_job_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_in can be created with a custom job ttl.
+        """
+        job_ttl = 123456789
+        job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_ttl=job_ttl)
+        self.assertEqual(job.ttl, job_ttl)
+
+    def test_enqueue_in_sets_job_result_ttl(self):
+        """
+        Ensure that a job scheduled via enqueue_in can be created with a custom result ttl.
+        """
+        job_result_ttl = 1234567890
+        job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_result_ttl=job_result_ttl)
+        self.assertEqual(job.result_ttl, job_result_ttl)
 
     def test_count(self):
         now = datetime.utcnow()
@@ -269,6 +301,21 @@ class TestScheduler(RQTestCase):
         queue = scheduler.get_queue_for_job(job)
         self.assertIn(job, queue.jobs)
         queue = Queue.from_queue_key('rq:queue:{0}'.format(queue_name))
+        self.assertIn(job, queue.jobs)
+        self.assertIn(queue, Queue.all())
+
+    def test_enqueue_job_with_queue(self):
+        """
+        Ensure that job is enqueued correctly when the scheduler is bound
+        to a queue object.
+        """
+        queue = Queue('foo', connection=self.testconn)
+        scheduler = Scheduler(connection=self.testconn, queue=queue)
+        job = scheduler._create_job(say_hello)
+        scheduler_queue = scheduler.get_queue_for_job(job)
+        self.assertEqual(queue, scheduler_queue)
+        scheduler.enqueue_job(job)
+        self.assertTrue(job.enqueued_at is not None)
         self.assertIn(job, queue.jobs)
         self.assertIn(queue, Queue.all())
 

@@ -8,6 +8,7 @@ from itertools import repeat
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
+from rq.utils import backend_class
 
 from redis import WatchError
 
@@ -19,16 +20,27 @@ logger = logging.getLogger(__name__)
 class Scheduler(object):
     scheduler_key = 'rq:scheduler'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
+    queue_class = Queue
+    job_class = Job
 
-    def __init__(self, queue_name='default', interval=60, connection=None):
+    def __init__(self, queue_name='default', queue=None, interval=60, connection=None,
+                 job_class=None, queue_class=None):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
-        self.queue_name = queue_name
+        self._queue = queue
+        if self._queue is None:
+            self.queue_name = queue_name
+        else:
+            self.queue_name = self._queue.name
         self._interval = interval
         self.log = logger
         self._lock_acquired = False
+        self.job_class = backend_class(self, 'job_class', override=job_class)
+        self.queue_class = backend_class(self, 'queue_class',
+                                         override=queue_class)
 
     def register_birth(self):
+        self.log.info('Registering birth')
         if self.connection.exists(self.scheduler_key) and \
                 not self.connection.hexists(self.scheduler_key, 'death'):
             raise ValueError("There's already an active RQ scheduler")
@@ -47,6 +59,7 @@ class Scheduler(object):
 
     def register_death(self):
         """Registers its own death."""
+        self.log.info('Registering death')
         with self.connection._pipeline() as p:
             p.hset(self.scheduler_key, 'death', time.time())
             p.expire(self.scheduler_key, 60)
@@ -104,10 +117,14 @@ class Scheduler(object):
             args = ()
         if kwargs is None:
             kwargs = {}
-        job = Job.create(func, args=args, connection=self.connection,
-                         kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
-                         description=description, timeout=timeout)
-        job.origin = queue_name or self.queue_name
+        job = self.job_class.create(
+                func, args=args, connection=self.connection,
+                kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
+                description=description, timeout=timeout)
+        if self._queue is not None:
+            job.origin = self._queue.name
+        else:
+            job.origin = queue_name or self.queue_name
         if commit:
             job.save()
         return job
@@ -116,6 +133,14 @@ class Scheduler(object):
         """
         Pushes a job to the scheduler queue. The scheduled queue is a Redis sorted
         set ordered by timestamp - which in this case is job's scheduled execution time.
+
+        All args and kwargs are passed onto the job, except for the following kwarg
+        keys (which affect the job creation itself):
+        - timeout
+        - job_id
+        - job_ttl
+        - job_result_ttl
+        - job_description
 
         Usage:
 
@@ -131,8 +156,13 @@ class Scheduler(object):
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
+        job_ttl = kwargs.pop('job_ttl', None)
+        job_result_ttl = kwargs.pop('job_result_ttl', None)
+        job_description = kwargs.pop('job_description', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
+                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
+                               description=job_description)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -146,8 +176,13 @@ class Scheduler(object):
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
+        job_ttl = kwargs.pop('job_ttl', None)
+        job_result_ttl = kwargs.pop('job_result_ttl', None)
+        job_description = kwargs.pop('job_description', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
+                               id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
+                               description=job_description)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
@@ -209,7 +244,7 @@ class Scheduler(object):
         Pulls a job from the scheduler queue. This function accepts either a
         job_id or a job instance.
         """
-        if isinstance(job, Job):
+        if isinstance(job, self.job_class):
             self.connection.zrem(self.scheduled_jobs_key, job.id)
         else:
             self.connection.zrem(self.scheduled_jobs_key, job)
@@ -220,7 +255,7 @@ class Scheduler(object):
         is scheduled for execution.
         """
         job_id = item
-        if isinstance(item, Job):
+        if isinstance(item, self.job_class):
             job_id = item.id
         return self.connection.zscore(self.scheduled_jobs_key, job_id) is not None
 
@@ -281,7 +316,7 @@ class Scheduler(object):
         for job_id, sched_time in job_ids:
             job_id = job_id.decode('utf-8')
             try:
-                job = Job.fetch(job_id, connection=self.connection)
+                job = self.job_class.fetch(job_id, connection=self.connection)
                 if with_times:
                     jobs.append((job, sched_time))
                 else:
@@ -304,8 +339,12 @@ class Scheduler(object):
         """
         Returns a queue to put job into.
         """
-        key = '{0}{1}'.format(Queue.redis_queue_namespace_prefix, job.origin)
-        return Queue.from_queue_key(key, connection=self.connection)
+        if self._queue is not None:
+            return self._queue
+        key = '{0}{1}'.format(self.queue_class.redis_queue_namespace_prefix,
+                              job.origin)
+        return self.queue_class.from_queue_key(
+                key, connection=self.connection, job_class=self.job_class)
 
     def enqueue_job(self, job):
         """
@@ -347,7 +386,7 @@ class Scheduler(object):
         """
         Move scheduled jobs into queues.
         """
-        self.log.info('Checking for scheduled jobs...')
+        self.log.debug('Checking for scheduled jobs')
 
         jobs = self.get_jobs_to_queue()
         for job in jobs:
@@ -362,13 +401,13 @@ class Scheduler(object):
         Periodically check whether there's any job that should be put in the queue (score
         lower than current time).
         """
-        self.log.info('Running RQ scheduler...')
 
         self.register_birth()
         self._install_signal_handlers()
 
         try:
             while True:
+                self.log.debug("Entering run loop")
 
                 start_time = time.time()
                 if self.acquire_lock():
@@ -379,11 +418,15 @@ class Scheduler(object):
                         self.log.info('RQ scheduler done, quitting')
                         break
                 else:
-                    self.log.info('Waiting for lock...')
+                    self.log.warning('Lock already taken - skipping run')
 
                 # Time has already elapsed while enqueuing jobs, so don't wait too long.
-                
-                time.sleep(self._interval - (time.time() - start_time))
+                seconds_elapsed_since_start = time.time() - start_time
+                seconds_until_next_scheduled_run = self._interval - seconds_elapsed_since_start
+                # ensure we have a non-negative number
+                if seconds_until_next_scheduled_run > 0:
+                    self.log.debug("Sleeping %.2f seconds" % seconds_until_next_scheduled_run)
+                    time.sleep(seconds_until_next_scheduled_run)
         finally:
             self.remove_lock()
             self.register_death()

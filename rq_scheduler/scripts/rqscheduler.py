@@ -18,6 +18,7 @@ def main():
     parser.add_argument('-d', '--db', default=int(os.environ.get('RQ_REDIS_DB', 0)), type=int, help="Redis database")
     parser.add_argument('-P', '--password', default=os.environ.get('RQ_REDIS_PASSWORD'), help="Redis password")
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Show more output')
+    parser.add_argument('--quiet', action='store_true', default=False, help='Show less output')
     parser.add_argument('--url', '-u', default=os.environ.get('RQ_REDIS_URL')
         , help='URL describing Redis connection details. \
             Overrides other connection arguments if supplied.')
@@ -26,6 +27,8 @@ def main():
             queue (in seconds, can be floating-point for more precision).")
     parser.add_argument('--path', default='.', help='Specify the import path.')
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
+    parser.add_argument('-j', '--job-class', help='Custom RQ Job class')
+    parser.add_argument('-q', '--queue-class', help='Custom RQ Queue class')
 
     args = parser.parse_args()
 
@@ -45,11 +48,16 @@ def main():
 
     if args.verbose:
         level = 'DEBUG'
+    elif args.quiet:
+        level = 'WARNING'
     else:
         level = 'INFO'
     setup_loghandlers(level)
 
-    scheduler = Scheduler(connection=connection, interval=args.interval)
+    scheduler = Scheduler(connection=connection,
+                          interval=args.interval,
+                          job_class=args.job_class,
+                          queue_class=args.queue_class)
     scheduler.run(burst=args.burst)
 
 if __name__ == '__main__':
