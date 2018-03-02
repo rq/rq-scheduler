@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.8.2 (2018-03-02)
+* Fixed conflicting `-q` parameter from rqscheduler script. Thanks @sourcepirate!
+
 ## Version 0.8.1 (2018-02-04)
 * Fixed packaging error
 
