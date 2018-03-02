@@ -18,7 +18,7 @@ def main():
     parser.add_argument('-d', '--db', default=int(os.environ.get('RQ_REDIS_DB', 0)), type=int, help="Redis database")
     parser.add_argument('-P', '--password', default=os.environ.get('RQ_REDIS_PASSWORD'), help="Redis password")
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Show more output')
-    parser.add_argument('--quiet', '-q', action='store_true', default=False, help='Show less output')
+    parser.add_argument('--quiet', action='store_true', default=False, help='Show less output')
     parser.add_argument('--url', '-u', default=os.environ.get('RQ_REDIS_URL')
         , help='URL describing Redis connection details. \
             Overrides other connection arguments if supplied.')
