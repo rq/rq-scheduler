@@ -412,6 +412,7 @@ class Scheduler(object):
                 start_time = time.time()
                 if self.acquire_lock():
                     self.enqueue_jobs()
+                    self.remove_lock()
 
                     if burst:
                         self.log.info('RQ scheduler done, quitting')
