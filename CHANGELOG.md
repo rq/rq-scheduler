@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.8.3 (2018-05-17)
+* Fixed lock management error. Thanks @chaffeqa!
+
 ## Version 0.8.2 (2018-03-02)
 * Fixed conflicting `-q` parameter from rqscheduler script. Thanks @sourcepirate!
 

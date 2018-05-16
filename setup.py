@@ -20,7 +20,7 @@ def get_dependencies():
 
 setup(
     name='rq-scheduler',
-    version='0.8.2',
+    version='0.8.3',
     author='Selwin Ong',
     author_email='selwin.ong@gmail.com',
     packages=['rq_scheduler'],
