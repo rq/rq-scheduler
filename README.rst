@@ -97,7 +97,8 @@ This is how you do it
         args=[arg1, arg2],             # Arguments passed into function when executed
         kwargs={'foo': 'bar'},         # Keyword arguments passed into function when executed
         interval=60,                   # Time before the function is called again, in seconds
-        repeat=10                      # Repeat this number of times (None means repeat forever)
+        repeat=10,                     # Repeat this number of times (None means repeat forever)
+        uniq=False                     # If True - do not queue job if it is already present in queue
     )
 
 **IMPORTANT NOTE**: If you set up a repeated job, you must make sure that you

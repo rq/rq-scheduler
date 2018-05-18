@@ -189,7 +189,7 @@ class Scheduler(object):
         return job
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                 interval=None, repeat=None, result_ttl=None, ttl=None,
+                 interval=None, repeat=None, uniq=None, result_ttl=None, ttl=None,
                  timeout=None, id=None, description=None, queue_name=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
@@ -208,6 +208,8 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
+        if uniq is not None:
+            job.meta['uniq'] = bool(uniq)
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
@@ -356,13 +358,17 @@ class Scheduler(object):
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
         cron_string = job.meta.get('cron_string', None)
+        uniq = job.meta.get('uniq', None)
 
         # If job is a repeated job, decrement counter
         if repeat:
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        queue.enqueue_job(job)
+        if not uniq or uniq and job.id not in queue.get_job_ids():
+            queue.enqueue_job(job)
+        else:
+            self.log.debug('{0} not pushed: already in queue with uniq'.format(job.id))
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
