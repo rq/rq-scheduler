@@ -220,3 +220,30 @@ The script accepts these arguments:
 
 The arguments pull default values from environment variables with the
 same names but with a prefix of ``RQ_REDIS_``.
+
+Running the Scheduler as a Service on Ubuntu
+--------------------------------------------
+
+sudo /etc/systemd/system/rqscheduler.service
+
+.. code-block:: bash
+    
+    [Unit]
+    Description=RQScheduler
+    After=network.target
+
+    [Service]
+    WorkingDirectory=/home/patrick/Devel/no_org/piscine
+    ExecStart=/home/<<User>>/.virtualenvs/<<YourVirtualEnv>>/bin/python \
+        /home/<<User>>/.virtualenvs/<<YourVirtualEnv>>/lib/<<YourPythonVersion>>/site-packages/rq_scheduler/scripts/rqscheduler.py
+
+    [Install]
+    WantedBy=multi-user.target
+
+Start, check Status and Enable the service
+
+.. code-block:: bash
+
+    sudo systemctl start rqscheduler.service
+    sudo systemctl status rqscheduler.service
+    sudo systemctl enable rqscheduler.service
