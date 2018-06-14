@@ -233,7 +233,7 @@ sudo /etc/systemd/system/rqscheduler.service
     After=network.target
 
     [Service]
-    WorkingDirectory=/home/patrick/Devel/no_org/piscine
+    WorkingDirectory=<<PathToYourProject>>
     ExecStart=/home/<<User>>/.virtualenvs/<<YourVirtualEnv>>/bin/python \
         /home/<<User>>/.virtualenvs/<<YourVirtualEnv>>/lib/<<YourPythonVersion>>/site-packages/rq_scheduler/scripts/rqscheduler.py
 
