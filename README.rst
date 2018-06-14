@@ -233,12 +233,13 @@ sudo /etc/systemd/system/rqscheduler.service
     After=network.target
 
     [Service]
-    WorkingDirectory=<<PathToYourProject>>
     ExecStart=/home/<<User>>/.virtualenvs/<<YourVirtualEnv>>/bin/python \
         /home/<<User>>/.virtualenvs/<<YourVirtualEnv>>/lib/<<YourPythonVersion>>/site-packages/rq_scheduler/scripts/rqscheduler.py
 
     [Install]
     WantedBy=multi-user.target
+
+You will also want to add any command line parameters if your configuration is not localhost or not set in the environmnt variabes.  
 
 Start, check Status and Enable the service
 
