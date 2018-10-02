@@ -143,7 +143,7 @@ Additionally the method takes two optional keyword arguments ``until`` and
 ``with_times``. The first one specifies up to which point in time scheduled jobs
 should be returned. It can be given as either a datetime / timedelta instance
 or an integer denoting the number of seconds since epoch (1970-01-01 00:00:00).
-The second argument is a boolen that determines whether the scheduled execution
+The second argument is a boolean that determines whether the scheduled execution
 time should be returned along with the job instances.
 
 Example
