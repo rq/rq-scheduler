@@ -240,7 +240,7 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_at(future_time, say_hello)
         self.assertIn(job, self.scheduler.get_jobs(timedelta(hours=1, seconds=1)))
         self.assertIn(job, [j[0] for j in self.scheduler.get_jobs(with_times=True)])
-        self.assertIsInstance(self.scheduler.get_jobs(with_times=True)[0][1], datetime)
+        self.assertIsInstance(list(self.scheduler.get_jobs(with_times=True))[0][1], datetime)
         self.assertNotIn(job, self.scheduler.get_jobs(timedelta(minutes=59, seconds=59)))
 
     def test_get_jobs_slice(self):
@@ -266,9 +266,9 @@ class TestScheduler(RQTestCase):
         jobs_slice = self.scheduler.get_jobs(offset=5, length=20)
         jobs_until_slice = self.scheduler.get_jobs(future_test_time, offset=5, length=20)
 
-        self.assertEqual(now_jobs + future_jobs, jobs)
-        self.assertEqual(expected_slice, jobs_slice)
-        self.assertEqual(expected_until_slice, jobs_until_slice)
+        self.assertEqual(now_jobs + future_jobs, list(jobs))
+        self.assertEqual(expected_slice, list(jobs_slice))
+        self.assertEqual(expected_until_slice, list(jobs_until_slice))
 
     def test_get_jobs_to_queue(self):
         """
@@ -510,11 +510,11 @@ class TestScheduler(RQTestCase):
         """
         job = self.scheduler.schedule(datetime.utcnow(), say_hello)
         job.cancel()
-        self.scheduler.get_jobs_to_queue()
+        list(self.scheduler.get_jobs_to_queue())
         self.assertIn(job.id, tl(self.testconn.zrange(
             self.scheduler.scheduled_jobs_key, 0, 1)))
         job.delete()
-        self.scheduler.get_jobs_to_queue()
+        list(self.scheduler.get_jobs_to_queue())
         self.assertNotIn(job.id, tl(self.testconn.zrange(
             self.scheduler.scheduled_jobs_key, 0, 1)))
 
@@ -573,9 +573,9 @@ class TestScheduler(RQTestCase):
         now = datetime.utcnow()
         job = self.scheduler.enqueue_at(now, say_hello)
         self.assertIn(job, self.scheduler.get_jobs_to_queue())
-        self.assertEqual(len(self.scheduler.get_jobs()), 1)
+        self.assertEqual(len(list(self.scheduler.get_jobs())), 1)
         self.scheduler.run(burst=True)
-        self.assertEqual(len(self.scheduler.get_jobs()), 0)
+        self.assertEqual(len(list(self.scheduler.get_jobs())), 0)
 
     def test_scheduler_w_o_explicit_connection(self):
         """
@@ -603,7 +603,7 @@ class TestScheduler(RQTestCase):
         now = datetime.utcnow()
         job = scheduler.enqueue_at(now, say_hello)
         self.assertIn(job, self.scheduler.get_jobs_to_queue())
-        self.assertEqual(len(self.scheduler.get_jobs()), 1)
+        self.assertEqual(len(list(self.scheduler.get_jobs())), 1)
 
         #remove the lock
         scheduler.remove_lock()
@@ -622,4 +622,4 @@ class TestScheduler(RQTestCase):
         thread.join()
 
         #all jobs must have been scheduled during 1 second
-        self.assertEqual(len(scheduler.get_jobs()), 0)
+        self.assertEqual(len(list(scheduler.get_jobs())), 0)
