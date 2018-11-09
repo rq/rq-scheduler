@@ -290,7 +290,7 @@ class Scheduler(object):
 
     def get_jobs(self, until=None, with_times=False, offset=None, length=None):
         """
-        Returns a list of job instances that will be queued until the given
+        Returns a iterator of job instances that will be queued until the given
         time. If no 'until' argument is given all jobs are returned.
 
         If with_times is True, a list of tuples consisting of the job instance
@@ -312,19 +312,18 @@ class Scheduler(object):
                                                 start=offset, num=length)
         if not with_times:
             job_ids = zip(job_ids, repeat(None))
-        jobs = []
         for job_id, sched_time in job_ids:
             job_id = job_id.decode('utf-8')
             try:
                 job = self.job_class.fetch(job_id, connection=self.connection)
-                if with_times:
-                    jobs.append((job, sched_time))
-                else:
-                    jobs.append(job)
             except NoSuchJobError:
                 # Delete jobs that aren't there from scheduler
                 self.cancel(job_id)
-        return jobs
+                continue
+            if with_times:
+                yield (job, sched_time)
+            else:
+                yield job
 
     def get_jobs_to_queue(self, with_times=False):
         """
