@@ -164,8 +164,7 @@ class Scheduler(object):
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description)
         self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(scheduled_time),
-                              job.id)
+                              {job.id: to_unix(scheduled_time)})
         return job
 
     def enqueue_in(self, time_delta, func, *args, **kwargs):
@@ -184,8 +183,7 @@ class Scheduler(object):
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description)
         self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(datetime.utcnow() + time_delta),
-                              job.id)
+                              {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
@@ -210,8 +208,7 @@ class Scheduler(object):
             raise ValueError("Can't repeat a job without interval argument")
         job.save()
         self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(scheduled_time),
-                              job.id)
+                              {job.id: to_unix(scheduled_time)})
         return job
 
     def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
@@ -235,8 +232,7 @@ class Scheduler(object):
         job.save()
 
         self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(scheduled_time),
-                              job.id)
+                              {job.id: to_unix(scheduled_time)})
         return job
 
     def cancel(self, job):
@@ -269,7 +265,7 @@ class Scheduler(object):
                     pipe.watch(self.scheduled_jobs_key)
                     if pipe.zscore(self.scheduled_jobs_key, job.id) is None:
                         raise ValueError('Job not in scheduled jobs queue')
-                    pipe.zadd(self.scheduled_jobs_key, to_unix(date_time), job.id)
+                    pipe.zadd(self.scheduled_jobs_key, {job.id: to_unix(date_time)})
                     break
                 except WatchError:
                     # If job is still in the queue, retry otherwise job is already executed
@@ -370,16 +366,14 @@ class Scheduler(object):
                 if job.meta['repeat'] == 0:
                     return
             self.connection._zadd(self.scheduled_jobs_key,
-                                  to_unix(datetime.utcnow()) + int(interval),
-                                  job.id)
+                                  {job.id: to_unix(datetime.utcnow()) + int(interval)})
         elif cron_string:
             # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
             self.connection._zadd(self.scheduled_jobs_key,
-                                  to_unix(get_next_scheduled_time(cron_string)),
-                                  job.id)
+                                  {job.id: to_unix(get_next_scheduled_time(cron_string))})
 
     def enqueue_jobs(self):
         """
