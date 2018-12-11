@@ -129,6 +129,15 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(scheduled_time))
 
+    def test_create_job_with_meta(self):
+        """
+        Ensure that meta information on the job is passed to rq
+        """
+        expected = {'say': 'hello'}
+        job = self.scheduler._create_job(say_hello, meta=expected)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(expected, job_from_queue.meta)
+
     def test_enqueue_at_sets_timeout(self):
         """
         Ensure that a job scheduled via enqueue_at can be created with
@@ -163,6 +172,14 @@ class TestScheduler(RQTestCase):
         job_result_ttl = 1234567890
         job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, job_result_ttl=job_result_ttl)
         self.assertEqual(job.result_ttl, job_result_ttl)
+
+    def test_enqueue_at_sets_meta(self):
+        """
+        Ensure that a job scheduled via enqueue_at can be created with a custom meta.
+        """
+        meta = {'say': 'hello'}
+        job = self.scheduler.enqueue_at(datetime.utcnow(), say_hello, meta=meta)
+        self.assertEqual(job.meta, meta)
 
     def test_enqueue_in(self):
         """
@@ -214,6 +231,14 @@ class TestScheduler(RQTestCase):
         job_result_ttl = 1234567890
         job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, job_result_ttl=job_result_ttl)
         self.assertEqual(job.result_ttl, job_result_ttl)
+
+    def test_enqueue_in_sets_meta(self):
+        """
+        Ensure that a job scheduled via enqueue_in sets meta.
+        """
+        meta = {'say': 'hello'}
+        job = self.scheduler.enqueue_in(timedelta(minutes=1), say_hello, meta=meta)
+        self.assertEqual(job.meta, meta)
 
     def test_count(self):
         now = datetime.utcnow()
@@ -457,6 +482,17 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(time_now) + interval)
 
+    def test_job_with_interval_can_set_meta(self):
+        """
+        Ensure that jobs with interval attribute can be created with meta
+        """
+        time_now = datetime.utcnow()
+        interval = 10
+        meta = {'say': 'hello'}
+        job = self.scheduler.schedule(time_now, say_hello, interval=interval, meta=meta)
+        self.scheduler.enqueue_job(job)
+        self.assertEqual(job.meta, meta)
+
     def test_job_with_crontab_get_rescheduled(self):
         # Create a job with a cronjob_string
         job = self.scheduler.cron("1 * * * *", say_hello)
@@ -533,6 +569,14 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, ttl=4)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job.ttl, 4)
+
+    def test_periodic_jobs_sets_meta(self):
+        """
+        Ensure periodic jobs sets correctly meta.
+        """
+        meta = {'say': 'hello'}
+        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, meta=meta)
+        self.assertEqual(meta, job.meta)
 
     def test_periodic_job_sets_id(self):
         """

@@ -97,7 +97,8 @@ This is how you do it
         args=[arg1, arg2],             # Arguments passed into function when executed
         kwargs={'foo': 'bar'},         # Keyword arguments passed into function when executed
         interval=60,                   # Time before the function is called again, in seconds
-        repeat=10                      # Repeat this number of times (None means repeat forever)
+        repeat=10,                     # Repeat this number of times (None means repeat forever)
+        meta={'foo': 'bar'}            # Arbitrary pickleable data on the job itself
     )
 
 **IMPORTANT NOTE**: If you set up a repeated job, you must make sure that you
@@ -121,8 +122,9 @@ This is how you do it
         func=func,                  # Function to be queued
         args=[arg1, arg2],          # Arguments passed into function when executed
         kwargs={'foo': 'bar'},      # Keyword arguments passed into function when executed
-        repeat=10                   # Repeat this number of times (None means repeat forever)
-        queue_name=queue_name       # In which queue the job should be put in
+        repeat=10,                  # Repeat this number of times (None means repeat forever)
+        queue_name=queue_name,      # In which queue the job should be put in
+        meta={'foo': 'bar'}         # Arbitrary pickleable data on the job itself
     )
 
 -------------------------
