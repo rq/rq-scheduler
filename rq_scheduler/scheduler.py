@@ -48,7 +48,7 @@ class Scheduler(object):
         key = self.scheduler_key
         now = time.time()
 
-        with self.connection._pipeline() as p:
+        with self.connection.pipeline() as p:
             p.delete(key)
             p.hset(key, 'birth', now)
             # Set scheduler key to expire a few seconds after polling interval
@@ -60,7 +60,7 @@ class Scheduler(object):
     def register_death(self):
         """Registers its own death."""
         self.log.info('Registering death')
-        with self.connection._pipeline() as p:
+        with self.connection.pipeline() as p:
             p.hset(self.scheduler_key, 'death', time.time())
             p.expire(self.scheduler_key, 60)
             p.execute()
@@ -164,7 +164,7 @@ class Scheduler(object):
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description, meta=meta)
-        self.connection._zadd(self.scheduled_jobs_key,
+        self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
 
@@ -184,7 +184,7 @@ class Scheduler(object):
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description, meta=meta)
-        self.connection._zadd(self.scheduled_jobs_key,
+        self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
 
@@ -210,7 +210,7 @@ class Scheduler(object):
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
         job.save()
-        self.connection._zadd(self.scheduled_jobs_key,
+        self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
 
@@ -234,7 +234,7 @@ class Scheduler(object):
 
         job.save()
 
-        self.connection._zadd(self.scheduled_jobs_key,
+        self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
 
@@ -262,7 +262,7 @@ class Scheduler(object):
         """
         Change a job's execution time.
         """
-        with self.connection._pipeline() as pipe:
+        with self.connection.pipeline() as pipe:
             while 1:
                 try:
                     pipe.watch(self.scheduled_jobs_key)
@@ -368,14 +368,14 @@ class Scheduler(object):
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
-            self.connection._zadd(self.scheduled_jobs_key,
+            self.connection.zadd(self.scheduled_jobs_key,
                                   {job.id: to_unix(datetime.utcnow()) + int(interval)})
         elif cron_string:
             # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
-            self.connection._zadd(self.scheduled_jobs_key,
+            self.connection.zadd(self.scheduled_jobs_key,
                                   {job.id: to_unix(get_next_scheduled_time(cron_string))})
 
     def enqueue_jobs(self):
