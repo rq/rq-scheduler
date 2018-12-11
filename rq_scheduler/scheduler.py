@@ -48,7 +48,7 @@ class Scheduler(object):
         key = self.scheduler_key
         now = time.time()
 
-        with self.connection._pipeline() as p:
+        with self.connection.pipeline() as p:
             p.delete(key)
             p.hset(key, 'birth', now)
             # Set scheduler key to expire a few seconds after polling interval
@@ -60,7 +60,7 @@ class Scheduler(object):
     def register_death(self):
         """Registers its own death."""
         self.log.info('Registering death')
-        with self.connection._pipeline() as p:
+        with self.connection.pipeline() as p:
             p.hset(self.scheduler_key, 'death', time.time())
             p.expire(self.scheduler_key, 60)
             p.execute()
@@ -262,7 +262,7 @@ class Scheduler(object):
         """
         Change a job's execution time.
         """
-        with self.connection._pipeline() as pipe:
+        with self.connection.pipeline() as pipe:
             while 1:
                 try:
                     pipe.watch(self.scheduled_jobs_key)
