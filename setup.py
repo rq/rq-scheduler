@@ -10,7 +10,7 @@ if sys.version_info < (2, 7):
 
 setup(
     name='rq-scheduler',
-    version='0.8.3',
+    version='0.9',
     author='Selwin Ong',
     author_email='selwin.ong@gmail.com',
     packages=['rq_scheduler'],

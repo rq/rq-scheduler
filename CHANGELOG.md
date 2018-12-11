@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.9 (2018-12-12)
+* Compatible with RQ >= 0.13 and redis-py >= 3.0. Thanks @ericatkin and @selwin!
+* `scheduler.schedule()` now accepts `meta` argument. Thanks @as3445!
+* `scheduler.get_jobs()` now returns an iterator. Thanks @craynic!
+
 ## Version 0.8.3 (2018-05-17)
 * Fixed lock management error. Thanks @chaffeqa!
 
