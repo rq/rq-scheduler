@@ -1,6 +1,8 @@
 import logging
 import signal
 import time
+import os
+import socket
 
 from datetime import datetime
 from itertools import repeat
@@ -18,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 class Scheduler(object):
+    redis_scheduler_namespace_prefix = 'rq:scheduler_instance:'
     scheduler_key = 'rq:scheduler'
+    scheduler_lock_key = 'rq:scheduler_lock'
     scheduled_jobs_key = 'rq:scheduler:scheduled_jobs'
     queue_class = Queue
     job_class = Job
@@ -39,13 +43,36 @@ class Scheduler(object):
         self.queue_class = backend_class(self, 'queue_class',
                                          override=queue_class)
 
+    @property
+    def name(self):
+        """Returns the name of the scheduler, under which it is registered to the
+        monitoring system.
+        By default, the name of the scheduler is constructed from the current
+        (short) host name and the current PID.
+        """
+        # if self._name is None:
+        hostname = socket.gethostname()
+        shortname, _, _ = hostname.partition('.')
+        self._name = '{0}.{1}'.format(shortname, self.pid)
+        return self._name
+
+    @property
+    def key(self):
+        """Returns the schedulers Redis hash key."""
+        return self.redis_scheduler_namespace_prefix + self.name
+
+    @property
+    def pid(self):
+        """The current process ID."""
+        return os.getpid()
+
     def register_birth(self):
         self.log.info('Registering birth')
-        if self.connection.exists(self.scheduler_key) and \
-                not self.connection.hexists(self.scheduler_key, 'death'):
-            raise ValueError("There's already an active RQ scheduler")
+        if self.connection.exists(self.key) and \
+                not self.connection.hexists(self.key, 'death'):
+            raise ValueError("There's already an active RQ scheduler named: {0!r}".format(self.name))
 
-        key = self.scheduler_key
+        key = self.key
         now = time.time()
 
         with self.connection.pipeline() as p:
@@ -61,8 +88,8 @@ class Scheduler(object):
         """Registers its own death."""
         self.log.info('Registering death')
         with self.connection.pipeline() as p:
-            p.hset(self.scheduler_key, 'death', time.time())
-            p.expire(self.scheduler_key, 60)
+            p.hset(self.key, 'death', time.time())
+            p.expire(self.key, 60)
             p.execute()
 
     def acquire_lock(self):
@@ -72,7 +99,7 @@ class Scheduler(object):
 
         This function returns True if a lock is acquired. False otherwise.
         """
-        key = '%s_lock' % self.scheduler_key
+        key = self.scheduler_lock_key
         now = time.time()
         expires = int(self._interval) + 10
         self._lock_acquired = self.connection.set(
@@ -83,10 +110,12 @@ class Scheduler(object):
         """
         Remove acquired lock.
         """
-        key = '%s_lock' % self.scheduler_key
+        key = self.scheduler_lock_key
 
         if self._lock_acquired:
             self.connection.delete(key)
+            self._lock_acquired = False
+            self.log.debug('{}: Lock Removed'.format(self.key))
 
     def _install_signal_handlers(self):
         """
@@ -387,10 +416,16 @@ class Scheduler(object):
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
-
-        # Refresh scheduler key's expiry
-        self.connection.expire(self.scheduler_key, int(self._interval) + 10)
+        
         return jobs
+
+    def heartbeat(self):
+        """Refreshes schedulers key, typically by extending the
+        expiration time of the scheduler, effectively making this a "heartbeat"
+        to not expire the scheduler until the timeout passes.
+        """
+        self.log.debug('{}: Sending a HeartBeat'.format(self.key))
+        self.connection.expire(self.key, int(self._interval) + 10)
 
     def run(self, burst=False):
         """
@@ -404,10 +439,13 @@ class Scheduler(object):
         try:
             while True:
                 self.log.debug("Entering run loop")
+                self.heartbeat()
 
                 start_time = time.time()
                 if self.acquire_lock():
+                    self.log.debug('{}: Acquired Lock'.format(self.key))
                     self.enqueue_jobs()
+                    self.heartbeat()
                     self.remove_lock()
 
                     if burst:
