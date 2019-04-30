@@ -337,8 +337,6 @@ class Scheduler(object):
         """
         Returns a queue to put job into.
         """
-        if self._queue is not None:
-            return self._queue
         key = '{0}{1}'.format(self.queue_class.redis_queue_namespace_prefix,
                               job.origin)
         return self.queue_class.from_queue_key(
