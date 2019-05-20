@@ -329,10 +329,10 @@ class TestScheduler(RQTestCase):
         self.assertIn(job, queue.jobs)
         self.assertIn(queue, Queue.all())
 
-    def test_enqueue_job_with_queue(self):
+    def test_enqueue_job_with_scheduler_queue(self):
         """
         Ensure that job is enqueued correctly when the scheduler is bound
-        to a queue object.
+        to a queue object and job queue name is not provided.
         """
         queue = Queue('foo', connection=self.testconn)
         scheduler = Scheduler(connection=self.testconn, queue=queue)
@@ -343,6 +343,21 @@ class TestScheduler(RQTestCase):
         self.assertTrue(job.enqueued_at is not None)
         self.assertIn(job, queue.jobs)
         self.assertIn(queue, Queue.all())
+
+    def test_enqueue_job_with_job_queue_name(self):
+        """
+        Ensure that job is enqueued correctly when queue_name is provided
+        at job creation
+        """
+        queue = Queue('foo', connection=self.testconn)
+        job_queue = Queue('job_foo', connection=self.testconn)
+        scheduler = Scheduler(connection=self.testconn, queue=queue)
+        job = scheduler._create_job(say_hello, queue_name='job_foo')
+        self.assertEqual(scheduler.get_queue_for_job(job), job_queue)
+        scheduler.enqueue_job(job)
+        self.assertTrue(job.enqueued_at is not None)
+        self.assertIn(job, job_queue.jobs)
+        self.assertIn(job_queue, Queue.all())
 
     def test_job_membership(self):
         now = datetime.utcnow()
@@ -667,3 +682,24 @@ class TestScheduler(RQTestCase):
 
         #all jobs must have been scheduled during 1 second
         self.assertEqual(len(list(scheduler.get_jobs())), 0)
+
+    def test_get_queue_for_job_with_job_queue_name(self):
+        """
+        Tests that scheduler gets the correct queue for the job when
+        queue_name is provided.
+        """
+        queue = Queue('scheduler_foo', connection=self.testconn)
+        job_queue = Queue('job_foo', connection=self.testconn)
+        scheduler = Scheduler(connection=self.testconn, queue=queue)
+        job = scheduler._create_job(say_hello, queue_name='job_foo')
+        self.assertEqual(scheduler.get_queue_for_job(job), job_queue)
+
+    def test_get_queue_for_job_without_job_queue_name(self):
+        """
+        Tests that scheduler gets the scheduler queue for the job
+        when queue name is not provided for that job.
+        """
+        queue = Queue('scheduler_foo', connection=self.testconn)
+        scheduler = Scheduler(connection=self.testconn, queue=queue)
+        job = scheduler._create_job(say_hello)
+        self.assertEqual(scheduler.get_queue_for_job(job), queue)
