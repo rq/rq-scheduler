@@ -9,6 +9,12 @@ a `Redis <http://redis.io/>`_ based Python queuing library.
 .. image:: https://travis-ci.org/rq/rq-scheduler.svg?branch=master
     :target: https://travis-ci.org/rq/rq-scheduler
 
+====================
+Support RQ Scheduler
+====================
+
+If you find ``rq-scheduler`` useful, please consider supporting its development via `Tidelift <https://tidelift.com/subscription/pkg/pypi-rq_scheduler?utm_source=pypi-rq-scheduler&utm_medium=referral&utm_campaign=readme>`_.
+
 ============
 Requirements
 ============
