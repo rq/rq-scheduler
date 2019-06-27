@@ -111,7 +111,9 @@ class Scheduler(object):
                     result_ttl=None, ttl=None, id=None, description=None,
                     queue_name=None, timeout=None, meta=None):
         """
-        Creates an RQ job and saves it to Redis.
+        Creates an RQ job and saves it to Redis. The job is assigned to the
+        given queue name if not None else it is assigned to scheduler queue by
+        default.
         """
         if args is None:
             args = ()
@@ -121,10 +123,11 @@ class Scheduler(object):
                 func, args=args, connection=self.connection,
                 kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
                 description=description, timeout=timeout, meta=meta)
-        if self._queue is not None:
-            job.origin = self._queue.name
+        if queue_name:
+            job.origin = queue_name
         else:
-            job.origin = queue_name or self.queue_name
+            job.origin = self.queue_name
+
         if commit:
             job.save()
         return job
@@ -337,8 +340,6 @@ class Scheduler(object):
         """
         Returns a queue to put job into.
         """
-        if self._queue is not None:
-            return self._queue
         key = '{0}{1}'.format(self.queue_class.redis_queue_namespace_prefix,
                               job.origin)
         return self.queue_class.from_queue_key(
