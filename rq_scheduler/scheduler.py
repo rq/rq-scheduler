@@ -163,10 +163,11 @@ class Scheduler(object):
         job_result_ttl = kwargs.pop('job_result_ttl', None)
         job_description = kwargs.pop('job_description', None)
         meta = kwargs.pop('meta', None)
+        queue_name = kwargs.pop('queue_name', None)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
-                               description=job_description, meta=meta)
+                               description=job_description, meta=meta, queue_name=queue_name)
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
@@ -183,10 +184,11 @@ class Scheduler(object):
         job_result_ttl = kwargs.pop('job_result_ttl', None)
         job_description = kwargs.pop('job_description', None)
         meta = kwargs.pop('meta', None)
+        queue_name = kwargs.pop('queue_name', None)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
-                               description=job_description, meta=meta)
+                               description=job_description, meta=meta, queue_name=queue_name)
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
