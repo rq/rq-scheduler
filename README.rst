@@ -131,7 +131,8 @@ This is how you do it
         kwargs={'foo': 'bar'},      # Keyword arguments passed into function when executed
         repeat=10,                  # Repeat this number of times (None means repeat forever)
         queue_name=queue_name,      # In which queue the job should be put in
-        meta={'foo': 'bar'}         # Arbitrary pickleable data on the job itself
+        meta={'foo': 'bar'},        # Arbitrary pickleable data on the job itself
+        use_local_timezone=False    # Interpret hours in the local timezone
     )
 
 -------------------------
@@ -236,7 +237,7 @@ Running the Scheduler as a Service on Ubuntu
 sudo /etc/systemd/system/rqscheduler.service
 
 .. code-block:: bash
-    
+
     [Unit]
     Description=RQScheduler
     After=network.target
@@ -248,7 +249,7 @@ sudo /etc/systemd/system/rqscheduler.service
     [Install]
     WantedBy=multi-user.target
 
-You will also want to add any command line parameters if your configuration is not localhost or not set in the environmnt variabes.  
+You will also want to add any command line parameters if your configuration is not localhost or not set in the environmnt variabes.
 
 Start, check Status and Enable the service
 
