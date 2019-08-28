@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta
-from dateutil.tz import gettz, tzlocal
+from datetime import datetime, timedelta, timezone
 import os
 import signal
 import time
@@ -453,8 +452,8 @@ class TestScheduler(RQTestCase):
         unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
         datetime_time = from_unix(unix_time)
 
-        expected_datetime_in_local_tz = datetime.now(tz=tzlocal()).replace(hour=15,minute=0,second=0,microsecond=0)
-        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(gettz("UTC")).time()
+        expected_datetime_in_local_tz = datetime.now().replace(hour=15,minute=0,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(timezone.utc).time()
 
     def test_crontab_rescheduled_correctly_with_local_timezone(self):
         # Create a job with a cronjob_string
@@ -470,8 +469,8 @@ class TestScheduler(RQTestCase):
         unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
         datetime_time = from_unix(unix_time)
 
-        expected_datetime_in_local_tz = datetime.now(tz=tzlocal()).replace(hour=15,minute=2,second=0,microsecond=0)
-        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(gettz("UTC")).time()
+        expected_datetime_in_local_tz = datetime.now().replace(hour=15,minute=2,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(timezone.utc).time()
 
     def test_crontab_sets_timeout(self):
         """
