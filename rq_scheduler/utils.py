@@ -22,7 +22,7 @@ def to_unix(dt):
 def get_next_scheduled_time(cron_string, use_local_timezone=False):
     """Calculate the next scheduled time by creating a crontab object
     with a cron string"""
-    now = datetime.now() if use_local_timezone else datetime.utcnow()
+    now = datetime.now(timezone.utc) if use_local_timezone else datetime.utcnow()
     itr = croniter.croniter(cron_string, now)
     return itr.get_next(datetime).astimezone(timezone.utc) if use_local_timezone else itr.get_next(datetime)
 
