@@ -8,7 +8,7 @@ from rq import Queue
 from rq.compat import as_text
 from rq.job import Job
 from rq_scheduler import Scheduler
-from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time
+from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time, get_utc_timezone
 
 from tests import RQTestCase
 
@@ -453,6 +453,39 @@ class TestScheduler(RQTestCase):
         assert datetime_time.minute == 1
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
+
+    def test_crontab_persisted_correctly_with_local_timezone(self):
+        """
+        Ensure that crontab attribute gets correctly saved in Redis when using local TZ.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.cron("0 15 * * *", say_hello, use_local_timezone=True)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['cron_string'], "0 15 * * *")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        expected_datetime_in_local_tz = datetime.now(get_utc_timezone()).replace(hour=15,minute=0,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(get_utc_timezone()).time()
+
+    def test_crontab_rescheduled_correctly_with_local_timezone(self):
+        # Create a job with a cronjob_string
+        job = self.scheduler.cron("1 15 * * *", say_hello, use_local_timezone=True)
+
+        # change crontab
+        job.meta['cron_string'] = "2 15 * * *"
+
+        # reenqueue the job
+        self.scheduler.enqueue_job(job)
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        expected_datetime_in_local_tz = datetime.now(get_utc_timezone()).replace(hour=15,minute=2,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(get_utc_timezone()).time()
 
     def test_crontab_sets_timeout(self):
         """

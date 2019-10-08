@@ -1,7 +1,8 @@
 import calendar
 import croniter
 
-from datetime import datetime, timedelta
+import datetime
+from datetime import datetime, timedelta, tzinfo
 import logging
 
 from rq.utils import ColorizingStreamHandler
@@ -19,11 +20,12 @@ def to_unix(dt):
     return calendar.timegm(dt.utctimetuple())
 
 
-def get_next_scheduled_time(cron_string):
+def get_next_scheduled_time(cron_string, use_local_timezone=False):
     """Calculate the next scheduled time by creating a crontab object
     with a cron string"""
-    itr = croniter.croniter(cron_string, datetime.utcnow())
-    return itr.get_next(datetime)
+    now = datetime.now(get_utc_timezone()) if use_local_timezone else datetime.utcnow()
+    itr = croniter.croniter(cron_string, now)
+    return itr.get_next(datetime).astimezone(get_utc_timezone()) if use_local_timezone else itr.get_next(datetime)
 
 
 def setup_loghandlers(level='INFO'):
@@ -50,3 +52,23 @@ def rationalize_until(until=None):
     elif isinstance(until, timedelta):
         until = to_unix((datetime.utcnow() + until))
     return until
+
+
+class UTCTimezone(tzinfo):
+    def utcoffset(self, dt):
+        return timedelta(0)
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return timedelta(0)
+
+
+__utc_timezone = UTCTimezone()
+
+
+def get_utc_timezone():
+    if hasattr(datetime, 'timezone'):
+        return datetime.get_utc_timezone()
+    return __utc_timezone
