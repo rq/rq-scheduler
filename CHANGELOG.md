@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.9.1 (2019-10-08)
+* `scheduler._create_job()` now respects `queue_name` parameter. Thanks @shubhamdipt!
+* Added `queue_name` parameter to `enqueue_at()` and `enqueue_in()`. Thanks @gauravmk!
+
 ## Version 0.9 (2018-12-12)
 * Compatible with RQ >= 0.13 and redis-py >= 3.0. Thanks @ericatkin and @selwin!
 * `scheduler.schedule()` now accepts `meta` argument. Thanks @as3445!
