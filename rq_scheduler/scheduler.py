@@ -3,6 +3,7 @@ import signal
 import time
 import os
 import socket
+from uuid import uuid4
 
 from datetime import datetime
 from itertools import repeat
@@ -28,7 +29,7 @@ class Scheduler(object):
     job_class = Job
 
     def __init__(self, queue_name='default', queue=None, interval=60, connection=None,
-                 job_class=None, queue_class=None):
+                 job_class=None, queue_class=None, name=None):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self._queue = queue
@@ -42,19 +43,7 @@ class Scheduler(object):
         self.job_class = backend_class(self, 'job_class', override=job_class)
         self.queue_class = backend_class(self, 'queue_class',
                                          override=queue_class)
-
-    @property
-    def name(self):
-        """Returns the name of the scheduler, under which it is registered to the
-        monitoring system.
-        By default, the name of the scheduler is constructed from the current
-        (short) host name and the current PID.
-        """
-        # if self._name is None:
-        hostname = socket.gethostname()
-        shortname, _, _ = hostname.partition('.')
-        self._name = '{0}.{1}'.format(shortname, self.pid)
-        return self._name
+        self.name = name or uuid4().hex
 
     @property
     def key(self):
