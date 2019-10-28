@@ -361,7 +361,7 @@ class Scheduler(object):
         if max_jobs_in_queue is None:
             return False
         relevant_queue = self.get_queue_for_job(job)
-        return relevant_queue.job_ids.count(job.job_id) >= max_jobs_in_queue
+        return relevant_queue.job_ids.count(job.id) >= max_jobs_in_queue
 
     def enqueue_job(self, job):
         """
