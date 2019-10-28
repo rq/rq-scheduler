@@ -558,21 +558,18 @@ class TestScheduler(RQTestCase):
 
     def test_job_not_queued_more_than_max_in_queue(self):
         """
-        Ensure that jobs with interval lower than it actual run time, queued
-        not more that max_in_queue times.
+        Ensure that jobs queued not more max_in_queue times.
         """
-        def sleep_and_say_hello():
-            time.sleep(5)
-            return say_hello()
-
         time_now = datetime.utcnow()
         interval = 1
         max_in_queue = 1
-        job = self.scheduler.schedule(time_now, sleep_and_say_hello, interval=interval, max_in_queue=max_in_queue)
-        time.sleep(10)
+        scheduler_with_small_interval = Scheduler(connection=self.testconn, interval=1)
+        job = scheduler_with_small_interval.schedule(time_now, say_hello, interval=interval,
+                                                     max_in_queue=max_in_queue, queue_name="test_queue")
+        time.sleep(3)
 
-        relevant_queue = self.scheduler.get_queue_for_job(job)
-        num_of_appearances_in_queue = relevant_queue.job_ids.count(job.job_id)
+        relevant_queue = scheduler_with_small_interval.get_queue_for_job(job)
+        num_of_appearances_in_queue = relevant_queue.job_ids.count(job.id)
         self.assertLessEqual(num_of_appearances_in_queue, max_in_queue)
 
     def test_job_with_crontab_get_rescheduled(self):
