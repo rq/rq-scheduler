@@ -196,7 +196,7 @@ class Scheduler(object):
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
                  interval=None, repeat=None, result_ttl=None, ttl=None,
                  timeout=None, id=None, description=None, queue_name=None,
-                 meta=None):
+                 meta=None, max_in_queue=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -214,6 +214,8 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
+        if max_in_queue is not None:
+            job.meta['max_in_queue'] = int(max_in_queue)
         job.save()
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
@@ -321,6 +323,8 @@ class Scheduler(object):
             job_id = job_id.decode('utf-8')
             try:
                 job = self.job_class.fetch(job_id, connection=self.connection)
+                if self.is_job_reach_max_in_queue(job):
+                    continue
             except NoSuchJobError:
                 # Delete jobs that aren't there from scheduler
                 self.cancel(job_id)
@@ -347,6 +351,17 @@ class Scheduler(object):
                               job.origin)
         return self.queue_class.from_queue_key(
                 key, connection=self.connection, job_class=self.job_class)
+
+    def is_job_reach_max_in_queue(self, job):
+        """
+        Returns a boolean indicating whether the given job reach it max times
+        on it queue, by it max_in_queue field.
+        """
+        max_jobs_in_queue = job.meta.get("max_in_queue", None)
+        if max_jobs_in_queue is None:
+            return False
+        relevant_queue = self.get_queue_for_job(job)
+        return relevant_queue.job_ids.count(job.id) >= max_jobs_in_queue
 
     def enqueue_job(self, job):
         """

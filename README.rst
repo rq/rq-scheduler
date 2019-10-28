@@ -105,6 +105,7 @@ This is how you do it
         kwargs={'foo': 'bar'},         # Keyword arguments passed into function when executed
         interval=60,                   # Time before the function is called again, in seconds
         repeat=10,                     # Repeat this number of times (None means repeat forever)
+        max_in_queue=3,                # Maximum times the job appears in the queue at a given moment
         meta={'foo': 'bar'}            # Arbitrary pickleable data on the job itself
     )
 
