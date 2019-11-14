@@ -353,7 +353,7 @@ class Scheduler(object):
         Move a scheduled job to a queue. In addition, it also does puts the job
         back into the scheduler if needed.
         """
-        self.log.debug('Pushing {0} to {1}'.format(job.id, job.origin))
+        self.log.debug('Pushing {0}({1}) to {1}'.format(job.func_name, job.id, job.origin))
 
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
