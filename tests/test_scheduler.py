@@ -101,6 +101,14 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual('description', job_from_queue.description)
 
+    def test_create_job_with_depends_on(self):
+        """
+        Ensure that depends_on is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, depends_on="dependency", args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(["dependency"], job_from_queue._dependency_ids)
+    
     def test_create_job_with_timeout(self):
         """
         Ensure that timeout is passed to RQ.
