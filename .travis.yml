@@ -1,5 +1,5 @@
 language: python
-dist: trusty
+dist: bionic
 
 python:
   - "2.7"
