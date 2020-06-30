@@ -67,7 +67,7 @@ There are two ways you can schedule a job. The first is using RQ Scheduler's ``e
 
     # Here's another example scheduling a job to run at a specific date and time (in UTC),
     # complete with args and kwargs.
-    scheduler.enqueue_at(datetime(2020, 1, 1, 3, 4), func, foo, bar=baz)
+    scheduler.enqueue_at(datetime(2020, 1, 1, 3, 4), func, 'foo', bar=baz)
 
 
 The second way is using ``enqueue_in``. Instead of taking a ``datetime`` object,
