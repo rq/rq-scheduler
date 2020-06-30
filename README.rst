@@ -180,10 +180,11 @@ execution using the familiar python ``in`` operator
 
 .. code-block:: python
 
-    if job_instance in scheduler:
+    if job_instance in list_of_job_instances:
         # Do something
     # or
-    if job_id in scheduler:
+    list_of_job_ids = [job.id for job in list_of_job_instances]
+    if job_id in list_of_job_ids:
         # Do something
 
 ---------------
