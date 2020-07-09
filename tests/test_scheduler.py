@@ -41,7 +41,7 @@ class TestScheduler(RQTestCase):
         interval so it automatically expires if scheduler is unexpectedly
         terminated.
         """
-        key = '%s_lock' % Scheduler.scheduler_key
+        key = Scheduler.scheduler_lock_key
         self.assertNotIn(key, tl(self.testconn.keys('*')))
         scheduler = Scheduler(connection=self.testconn, interval=20)
         self.assertTrue(scheduler.acquire_lock())
@@ -56,7 +56,7 @@ class TestScheduler(RQTestCase):
         same time. When removing the lock, only the scheduler which
         originally acquired the lock can remove the lock.
         """
-        key = '%s_lock' % Scheduler.scheduler_key
+        key = Scheduler.scheduler_lock_key
         self.assertNotIn(key, tl(self.testconn.keys('*')))
         scheduler1 = Scheduler(connection=self.testconn, interval=20)
         scheduler2 = Scheduler(connection=self.testconn, interval=20)
@@ -67,6 +67,48 @@ class TestScheduler(RQTestCase):
         self.assertIn(key, tl(self.testconn.keys('*')))
         scheduler1.remove_lock()
         self.assertNotIn(key, tl(self.testconn.keys('*')))
+
+    def test_multiple_schedulers_are_running_simultaneously(self):
+        """
+        Even though only 1 Schedulder holds the lock and performs the scheduling.
+        Multiple schedulders are still registered to take over in case the original
+        scheduler goes down.
+        """
+        lock_key = Scheduler.scheduler_lock_key
+        self.assertNotIn(lock_key, tl(self.testconn.keys('*')))
+        scheduler1 = Scheduler(connection=self.testconn, interval=20)
+        scheduler2 = Scheduler(connection=self.testconn, interval=20)
+        scheduler1.register_birth()
+        self.assertIn(scheduler1.key, tl(self.testconn.keys('*')))
+        scheduler2.register_birth()
+        self.assertIn(scheduler2.key, tl(self.testconn.keys('*')))
+        scheduler1.acquire_lock()
+        scheduler2.acquire_lock()
+        self.assertIn(scheduler1.key, tl(self.testconn.keys('*')))
+        self.assertIn(scheduler2.key, tl(self.testconn.keys('*')))
+
+    def test_lock_handover_between_multiple_schedulers(self):
+        lock_key = Scheduler.scheduler_lock_key
+        self.assertNotIn(lock_key, tl(self.testconn.keys('*')))
+        scheduler1 = Scheduler(connection=self.testconn, interval=20)
+        scheduler2 = Scheduler(connection=self.testconn, interval=20)
+        scheduler1.register_birth()
+        scheduler1.acquire_lock()
+        scheduler2.register_birth()
+        scheduler2.acquire_lock()
+        # Both schedulers are still active/registered
+        self.assertIn(scheduler1.key, tl(self.testconn.keys('*')))
+        self.assertIn(scheduler2.key, tl(self.testconn.keys('*')))
+        scheduler1.remove_lock()
+        self.assertNotIn(lock_key, tl(self.testconn.keys('*')))
+        scheduler2.acquire_lock()
+        self.assertIn(lock_key, tl(self.testconn.keys('*')))
+
+    def test_same_scheduler_cant_register_multiple_times(self):
+        scheduler1 = Scheduler(connection=self.testconn, interval=20)
+        scheduler1.register_birth()
+        self.assertIn(scheduler1.key, tl(self.testconn.keys('*')))
+        self.assertRaises(ValueError, scheduler1.register_birth)
 
     def test_create_job(self):
         """
@@ -101,6 +143,14 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual('description', job_from_queue.description)
 
+    def test_create_job_with_depends_on(self):
+        """
+        Ensure that depends_on is passed to RQ.
+        """
+        job = self.scheduler._create_job(say_hello, depends_on="dependency", args=(), kwargs={})
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(["dependency"], job_from_queue._dependency_ids)
+    
     def test_create_job_with_timeout(self):
         """
         Ensure that timeout is passed to RQ.
@@ -695,9 +745,7 @@ class TestScheduler(RQTestCase):
         """
         Test that scheduler accepts 'interval' of type float, less than 1 second.
         """
-        key = Scheduler.scheduler_key
-        lock_key = '%s_lock' % Scheduler.scheduler_key
-        self.assertNotIn(key, tl(self.testconn.keys('*')))
+        lock_key = Scheduler.scheduler_lock_key
         scheduler = Scheduler(connection=self.testconn, interval=0.1)   # testing interval = 0.1 second
         self.assertEqual(scheduler._interval, 0.1)
 

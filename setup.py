@@ -10,7 +10,7 @@ if sys.version_info < (2, 7):
 
 setup(
     name='rq-scheduler',
-    version='0.9',
+    version='0.10.0',
     author='Selwin Ong',
     author_email='selwin.ong@gmail.com',
     packages=['rq_scheduler'],
@@ -36,9 +36,10 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ]
 )

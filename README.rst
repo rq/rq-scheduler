@@ -258,3 +258,35 @@ Start, check Status and Enable the service
     sudo systemctl start rqscheduler.service
     sudo systemctl status rqscheduler.service
     sudo systemctl enable rqscheduler.service
+
+---------------------------
+Running Multiple Schedulers
+---------------------------
+
+Multiple instances of the rq-scheduler can be run simultaneously. It allows for
+
+* Reliability (no single point of failure)
+* Failover (scheduler instances automatically retry to attain lock and schedule jobs)
+* Running scheduler on multiple server instances to make deployment identical and easier
+
+Multiple schedulers can be run in any way you want. Typically you'll only want to run one scheduler per server/instance.
+
+.. code-block:: bash
+
+   rqscheduler -i 5
+
+   # another shell/systemd service or ideally another server
+   rqscheduler -i 5
+
+   # different parameters can be provided to different schedulers
+   rqscheduler -i 10
+
+**Practical example**:
+
+- ``scheduler_a`` is running on ``ec2_instance_a``
+- If ``scheduler_a`` crashes or ``ec2_instance_a`` goes down, then our tasks won't be scheduled at all
+- Instead we can simply run 2 schedulers. Another scheduler called ``scheduler_b`` can be run on ``ec2_instance_b``
+- Now both ``scheduler_a`` and ``scheduler_b`` will periodically check and schedule the jobs
+- If one fails, the other still works
+
+You can read more about multiple schedulers in `#212 <https://github.com/rq/rq-scheduler/pull/212>`_ and `#195 <https://github.com/rq/rq-scheduler/issues/195>`_
