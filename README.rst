@@ -69,6 +69,11 @@ There are two ways you can schedule a job. The first is using RQ Scheduler's ``e
     # complete with args and kwargs.
     scheduler.enqueue_at(datetime(2020, 1, 1, 3, 4), func, foo, bar=baz)
 
+    # You can choose the queue type where jobs will be enqueued by passing the name of the type to the scheduler
+    # used to enqueue
+    scheduler = Scheduler('foo', queue_class="rq.Queue")
+    scheduler.enqueue_at(datetime(2020, 1, 1), func) # The job will be enqueued at the queue named "foo" using the queue type "rq.Queue"
+
 
 The second way is using ``enqueue_in``. Instead of taking a ``datetime`` object,
 this method expects a ``timedelta`` and schedules the job to run at
