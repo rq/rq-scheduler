@@ -11,7 +11,8 @@ from itertools import repeat
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
-from rq.utils import backend_class
+from rq.utils import backend_class, import_attribute
+from rq.compat import string_types
 
 from redis import WatchError
 
@@ -41,8 +42,10 @@ class Scheduler(object):
         self.log = logger
         self._lock_acquired = False
         self.job_class = backend_class(self, 'job_class', override=job_class)
-        self.queue_class = backend_class(self, 'queue_class',
-                                         override=queue_class)
+        self.queue_class_name = None
+        if isinstance(queue_class, string_types):
+            self.queue_class_name = queue_class
+        self.queue_class = backend_class(self, 'queue_class', override=queue_class)
         self.name = name or uuid4().hex
 
     @property
@@ -145,6 +148,9 @@ class Scheduler(object):
             job.origin = queue_name
         else:
             job.origin = self.queue_name
+
+        if self.queue_class_name:
+            job.meta["queue_class_name"] = self.queue_class_name
 
         if commit:
             job.save()
@@ -368,8 +374,11 @@ class Scheduler(object):
         """
         key = '{0}{1}'.format(self.queue_class.redis_queue_namespace_prefix,
                               job.origin)
-        return self.queue_class.from_queue_key(
-                key, connection=self.connection, job_class=self.job_class)
+        if job.meta.get('queue_class_name'):
+            queue_class = import_attribute(job.meta['queue_class_name'])
+        else:
+            queue_class = self.queue_class
+        return queue_class.from_queue_key(key, connection=self.connection, job_class=self.job_class)
 
     def enqueue_job(self, job):
         """

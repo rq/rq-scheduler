@@ -799,3 +799,19 @@ class TestScheduler(RQTestCase):
         scheduler = Scheduler(connection=self.testconn, queue=queue)
         job = scheduler._create_job(say_hello)
         self.assertEqual(scheduler.get_queue_for_job(job), queue)
+
+    def test_create_job_with_queue_class_name(self):
+        """
+        Ensure that queue class is passed to RQ and stored in job.
+        """
+        # Scheduler with specific queue uses it in jobs
+        scheduler_with_queuename = Scheduler(connection=self.testconn, queue_class="rq.Queue")
+        self.assertEqual(scheduler_with_queuename.queue_class_name, "rq.Queue")
+        job = scheduler_with_queuename._create_job(say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual("rq.Queue", job_from_queue.meta.get("queue_class_name"))
+        # Scheduler without specific still works as usual
+        self.assertIsNone(self.scheduler.queue_class_name)
+        job = self.scheduler._create_job(say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertFalse(job_from_queue.meta.get("queue_class_name"))
