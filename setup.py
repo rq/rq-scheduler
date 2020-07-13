@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys
-
 from setuptools import setup
-
-tests_require = []
-if sys.version_info < (2, 7):
-    tests_require.append('discover==0.4.0')
 
 
 setup(
@@ -25,8 +19,7 @@ setup(
     rqscheduler = rq_scheduler.scripts.rqscheduler:main
     ''',
     package_data={'': ['README.rst']},
-    tests_require=tests_require,
-    install_requires=['croniter>=0.3.9', 'rq>=0.13'] + tests_require,
+    install_requires=['croniter>=0.3.9', 'rq>=0.13'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
