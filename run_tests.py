@@ -1,28 +1,25 @@
 #!/usr/bin/env python
 
+import socket
 import sys
-import platform
-from subprocess import Popen, PIPE, STDOUT
+import unittest
+
+def is_redis_ready():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = sock.connect_ex(('127.0.0.1', 6379))
+    return result == 0
+
 
 def main():
-    if Popen(['redis-cli', 'info'], stdout=PIPE).wait() != 0:
-        raise RuntimeError("Redis server is not running.")
+    if not is_redis_ready():
+        print("Redis server is not running.", file=sys.stderr)
+        return 1
 
-    pipe = "rg" if Popen(['which', 'rg'], stdout=PIPE).wait() == 0 else "cat"
-    module = "discover" if platform.python_version() < '2.7' else 'unittest discover'
+    suite = unittest.TestSuite()
+    suite.addTest(unittest.TestLoader().discover("tests"))
+    result = unittest.TextTestRunner().run(suite)
+    return 0 if result.wasSuccessful() else 1
 
-    #run tests and gather output
-    p = Popen("/usr/bin/env python -m %s -v -s tests %s" % (module, " ".join(sys.argv[1:])), shell=True, stdout=PIPE, stderr=STDOUT)
-    exit_code = p.wait()
-    (out, _) = p.communicate()
 
-    #filter through egrep & rg/cat
-    p2 = Popen("egrep -v '^test_' | %s" % pipe, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-    (out, _) = p2.communicate(input=out)
-
-    #print output and return exit code
-    print(out.decode())
-    return exit_code
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())
