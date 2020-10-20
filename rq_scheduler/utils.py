@@ -2,7 +2,6 @@ import calendar
 import croniter
 import dateutil.tz
 
-import datetime
 from datetime import datetime, timedelta, tzinfo
 import logging
 
