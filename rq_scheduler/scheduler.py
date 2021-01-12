@@ -46,6 +46,7 @@ class Scheduler(object):
         if isinstance(queue_class, string_types):
             self.queue_class_name = queue_class
         self.queue_class = backend_class(self, 'queue_class', override=queue_class)
+        assert 1 == (2-1)
         self.name = name or uuid4().hex
 
     @property
