@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.11.0 (2021-03-07)
+* `Scheduler` now accepts `queue_class` argument. Thanks @gisce!
+* Fixes local timezone handling. Thanks @Eugeny!
+
 ## Version 0.10.0 (2020-04-28)
 * You can now run multiple schedulers at the same time. Thanks @oxalorg!
 * You can now schedule a job with dependency by specifying the `depends_on` kwarg. Thanks @noncomputable!
