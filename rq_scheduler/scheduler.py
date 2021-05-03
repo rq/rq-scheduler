@@ -322,6 +322,17 @@ class Scheduler(object):
         until = rationalize_until(until)
         return self.connection.zcount(self.scheduled_jobs_key, 0, until)
 
+    def _get_job_from_id(self, job_id):
+        """
+        Fetch the job with given job ID or return None if no matching job
+        exists.
+        """
+        try:
+            return self.job_class.fetch(job_id, connection=self.connection)
+        except NoSuchJobError:
+            # Delete jobs that aren't there from scheduler
+            self.cancel(job_id)
+
     def get_jobs(self, until=None, with_times=False, offset=None, length=None):
         """
         Returns a iterator of job instances that will be queued until the given
@@ -348,11 +359,8 @@ class Scheduler(object):
             job_ids = zip(job_ids, repeat(None))
         for job_id, sched_time in job_ids:
             job_id = job_id.decode('utf-8')
-            try:
-                job = self.job_class.fetch(job_id, connection=self.connection)
-            except NoSuchJobError:
-                # Delete jobs that aren't there from scheduler
-                self.cancel(job_id)
+            job = self._get_job_from_id(job_id)
+            if job is None:
                 continue
             if with_times:
                 yield (job, sched_time)
