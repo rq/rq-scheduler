@@ -333,6 +333,24 @@ class Scheduler(object):
             # Delete jobs that aren't there from scheduler
             self.cancel(job_id)
 
+    def get_job(self, item, with_time=False):
+        """
+        Returns the scheduled job instance of the given item (a job instance or
+        job ID). If no matching job is found, None is returned for the job
+        instance.
+
+        If with_time is True, a list of tuples consisting of the job instance
+        and its scheduled execution time is returned.
+        """
+        job_id = item.id if isinstance(item, self.job_class) else item
+        score = self.connection.zscore(self.scheduled_jobs_key, job_id)
+        job = None if score is None else self._get_job_from_id(job_id)
+
+        if with_time:
+            return (job, None if job is None else from_unix(score))
+        else:
+            return job
+
     def get_jobs(self, until=None, with_times=False, offset=None, length=None):
         """
         Returns a iterator of job instances that will be queued until the given

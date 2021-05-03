@@ -305,6 +305,31 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.scheduler.count(future_test_time), 1)
         self.assertEqual(self.scheduler.count(), 2)
 
+    def test_get_job(self):
+        """
+        Ensure get_job() returns the expected job.
+        """
+        now = datetime.utcnow()
+        job = self.scheduler.enqueue_at(now, say_hello)
+        self.assertEqual(job, self.scheduler.get_job(job.id))
+
+        # Truncate microseconds to mimic the behavior of from_unix in utils.py.
+        self.assertEqual(
+            (job, now - timedelta(microseconds=now.microsecond)),
+            self.scheduler.get_job(job.id, True)
+        )
+
+    def test_job_not_found(self):
+        """
+        Ensure get_job() returns None when the job is not found.
+        """
+        now = datetime.utcnow()
+        job = self.scheduler.enqueue_at(now, say_hello)
+        self.assertEqual(None, self.scheduler.get_job("wrong-key"))
+        self.assertEqual(
+            (None, None), self.scheduler.get_job("wrong-key", True)
+        )
+
     def test_get_jobs(self):
         """
         Ensure get_jobs() returns all jobs until the specified time.
