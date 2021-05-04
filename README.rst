@@ -176,6 +176,24 @@ Example
     # returns a list of tuples:
     # [(<rq.job.Job object at 0x123456789>, datetime.datetime(2012, 11, 25, 12, 30)), ...]
 
+If you want to check if a specific job has been scheduled and know its ID, you
+can use the ``get_job`` method.
+
+.. code-block:: python
+
+    job_instance = scheduler.get_job(job_id)
+
+By default, ``get_job`` returns the job instance or ``None``, if the job does
+not exist. Similar to ``get_jobs``, you can also get the scheduled execution
+time using the ``with_time`` argument.
+
+.. code-block:: python
+
+    job_and_time = scheduler.get_job(job_id, with_time=True)
+    # returns a tuple:
+    # (<rq.job.Job object at 0x123456789>, datetime.datetime(2012, 11, 25, 12, 30))
+    # or (None, None) if there is no matching job
+
 ------------------------------
 Checking if a job is scheduled
 ------------------------------
