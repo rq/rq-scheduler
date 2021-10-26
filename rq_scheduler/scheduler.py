@@ -460,7 +460,7 @@ class Scheduler(object):
                         self.log.info('RQ scheduler done, quitting')
                         break
                 else:
-                    self.log.warning('Lock already taken - skipping run')
+                    self.log.debug('Lock already taken - skipping run')
 
                 # Time has already elapsed while enqueuing jobs, so don't wait too long.
                 seconds_elapsed_since_start = time.time() - start_time
