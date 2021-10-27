@@ -557,8 +557,8 @@ class TestScheduler(RQTestCase):
             self.assertEqual(1, enqueue_job.call_count)
 
             (job, next_scheduled_time), = self.scheduler.get_jobs(with_times=True)
-            expected_scheduled_time = now.astimezone(UTC) + timedelta(hours=1, minutes=5)
-            self.assertEqual(expected_scheduled_time.toordinal(), next_scheduled_time.toordinal())
+            expected_scheduled_time = (now + timedelta(hours=1, minutes=5)).astimezone(UTC)
+            self.assertEqual(to_unix(expected_scheduled_time), to_unix(next_scheduled_time))
 
     def test_crontab_sets_timeout(self):
         """
