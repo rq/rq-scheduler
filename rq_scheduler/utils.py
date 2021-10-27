@@ -1,5 +1,6 @@
 import calendar
 import croniter
+import crontab
 import dateutil.tz
 
 from datetime import datetime, timedelta, tzinfo
@@ -25,8 +26,9 @@ def get_next_scheduled_time(cron_string, use_local_timezone=False):
     with a cron string"""
     tz = dateutil.tz.tzlocal() if use_local_timezone else dateutil.tz.UTC
     now = datetime.now(tz)
-    itr = croniter.croniter(cron_string, now)
-    return itr.get_next(datetime).astimezone(tz)
+    cron = crontab.CronTab(cron_string)
+    next_time = cron.next(now=now, return_datetime=True)
+    return next_time.astimezone(tz)
 
 
 def setup_loghandlers(level='INFO'):

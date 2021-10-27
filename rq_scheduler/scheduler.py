@@ -412,8 +412,9 @@ class Scheduler(object):
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
+            next_scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
             self.connection.zadd(self.scheduled_jobs_key,
-                                  {job.id: to_unix(get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone))})
+                                 {job.id: to_unix(next_scheduled_time)})
 
     def enqueue_jobs(self):
         """
