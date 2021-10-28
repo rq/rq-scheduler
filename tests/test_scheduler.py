@@ -1,16 +1,22 @@
-from datetime import datetime, timedelta
-from dateutil.tz import UTC, tzlocal
 import os
 import signal
 import time
+from datetime import datetime
+from datetime import timedelta
 from threading import Thread
+from unittest import mock
 
+import freezegun
+from dateutil.tz import tzlocal
+from dateutil.tz import UTC
 from rq import Queue
 from rq.compat import as_text
 from rq.job import Job
-from rq_scheduler import Scheduler
-from rq_scheduler.utils import to_unix, from_unix, get_next_scheduled_time
 
+from rq_scheduler import Scheduler
+from rq_scheduler.utils import from_unix
+from rq_scheduler.utils import get_next_scheduled_time
+from rq_scheduler.utils import to_unix
 from tests import RQTestCase
 
 
@@ -537,6 +543,22 @@ class TestScheduler(RQTestCase):
 
         expected_datetime_in_local_tz = datetime.now(tzlocal()).replace(hour=15,minute=2,second=0,microsecond=0)
         assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(UTC).time()
+
+    def test_crontab_schedules_correctly(self):
+        # Create a job with a cronjob_string
+        now = datetime.now().replace(minute=0, hour=0, second=0, microsecond=0)
+        with freezegun.freeze_time(now):
+            job = self.scheduler.cron("5 * * * * *", say_hello)
+
+        with mock.patch.object(self.scheduler, 'enqueue_job', wraps=self.scheduler.enqueue_job) as enqueue_job, \
+                freezegun.freeze_time(now + timedelta(minutes=5)):
+            self.assertEqual(1, self.scheduler.count())
+            self.scheduler.enqueue_jobs()
+            self.assertEqual(1, enqueue_job.call_count)
+
+            (job, next_scheduled_time), = self.scheduler.get_jobs(with_times=True)
+            expected_scheduled_time = (now + timedelta(hours=1, minutes=5)).astimezone(UTC)
+            self.assertEqual(to_unix(expected_scheduled_time), to_unix(next_scheduled_time))
 
     def test_crontab_sets_timeout(self):
         """
