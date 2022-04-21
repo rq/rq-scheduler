@@ -1,6 +1,7 @@
 import os
 import signal
 import time
+import dateutil.tz
 from datetime import datetime
 from datetime import timedelta
 from threading import Thread
@@ -511,25 +512,27 @@ class TestScheduler(RQTestCase):
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() < timedelta(hours=1)
 
-    def test_crontab_persisted_correctly_with_local_timezone(self):
+    def test_crontab_persisted_correctly_with_timezone(self):
         """
         Ensure that crontab attribute gets correctly saved in Redis when using local TZ.
         """
         # create a job that runs one minute past each whole hour
-        job = self.scheduler.cron("0 15 * * *", say_hello, use_local_timezone=True)
+        timezone = dateutil.tz.gettz('Europe/Kiev')
+        job = self.scheduler.cron("0 15 * * *", say_hello, timezone=timezone)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_from_queue.meta['cron_string'], "0 15 * * *")
+        self.assertEqual(job_from_queue.meta['timezone'], timezone)
 
         # get the scheduled_time and convert it to a datetime object
         unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
         datetime_time = from_unix(unix_time)
 
-        expected_datetime_in_local_tz = datetime.now(tzlocal()).replace(hour=15,minute=0,second=0,microsecond=0)
-        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(UTC).time()
+        assert datetime_time.time() == datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0).time()
 
-    def test_crontab_rescheduled_correctly_with_local_timezone(self):
+    def test_crontab_rescheduled_correctly_with_timezone(self):
         # Create a job with a cronjob_string
-        job = self.scheduler.cron("1 15 * * *", say_hello, use_local_timezone=True)
+        timezone = dateutil.tz.gettz('Europe/Kiev')
+        job = self.scheduler.cron("1 15 * * *", say_hello, timezone=timezone)
 
         # change crontab
         job.meta['cron_string'] = "2 15 * * *"
@@ -541,8 +544,7 @@ class TestScheduler(RQTestCase):
         unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
         datetime_time = from_unix(unix_time)
 
-        expected_datetime_in_local_tz = datetime.now(tzlocal()).replace(hour=15,minute=2,second=0,microsecond=0)
-        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(UTC).time()
+        assert datetime_time.time() == datetime.utcnow().replace(hour=12, minute=2, second=0, microsecond=0).time()
 
     def test_crontab_schedules_correctly(self):
         # Create a job with a cronjob_string
@@ -609,7 +611,7 @@ class TestScheduler(RQTestCase):
         """
         Ensure jobs with interval attribute are put back in the scheduler
         """
-        time_now = datetime.utcnow()
+        time_now = datetime.now(tz=dateutil.tz.gettz('Europe/Kiev'))
         interval = 10
         job = self.scheduler.schedule(time_now, say_hello, interval=interval)
         self.scheduler.enqueue_job(job)
@@ -711,8 +713,8 @@ class TestScheduler(RQTestCase):
         Ensure periodic jobs sets correctly meta.
         """
         meta = {'say': 'hello'}
-        job = self.scheduler.schedule(datetime.utcnow(), say_hello, interval=5, meta=meta)
-        self.assertEqual(meta, job.meta)
+        job = self.scheduler.schedule(datetime.now(tz=dateutil.tz.UTC), say_hello, interval=5, meta=meta)
+        self.assertEqual({'timezone': dateutil.tz.UTC, 'interval': 5, 'say': 'hello'}, job.meta)
 
     def test_periodic_job_sets_id(self):
         """
