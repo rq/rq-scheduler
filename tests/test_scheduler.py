@@ -183,7 +183,7 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.enqueue_at(scheduled_time, say_hello)
         self.assertEqual(job, Job.fetch(job.id, connection=self.testconn))
         self.assertIn(job.id,
-                      tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(scheduled_time))
 
@@ -342,8 +342,8 @@ class TestScheduler(RQTestCase):
         future_jobs = [self.scheduler.enqueue_at(future_time + timedelta(seconds=x), say_hello)
                        for x in range(15)]
 
-        expected_slice = now_jobs[5:] + future_jobs[:10]  # last 10 from now_jobs and first 10 from future_jobs
-        expected_until_slice = now_jobs[5:]  # last 10 from now_jobs
+        expected_slice = now_jobs[5:] + future_jobs[:10]   # last 10 from now_jobs and first 10 from future_jobs
+        expected_until_slice = now_jobs[5:]                # last 10 from now_jobs
 
         jobs = self.scheduler.get_jobs()
         jobs_slice = self.scheduler.get_jobs(offset=5, length=20)
@@ -460,7 +460,7 @@ class TestScheduler(RQTestCase):
         new_date = datetime(2010, 1, 1)
         self.scheduler.change_execution_time(job, new_date)
         self.assertEqual(to_unix(new_date),
-                         self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id))
+            self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id))
         self.scheduler.cancel(job)
         self.assertRaises(ValueError, self.scheduler.change_execution_time, job, new_date)
 
@@ -517,7 +517,7 @@ class TestScheduler(RQTestCase):
         Ensure that crontab attribute gets correctly saved in Redis when using local TZ.
         """
         # create a job that runs one minute past each whole hour
-        timezone = dateutil.tz.gettz('Asia/Jerusalem')
+        timezone = dateutil.tz.gettz('Europe/Kiev')
         job = self.scheduler.cron("0 15 * * *", say_hello, timezone=timezone)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(job_from_queue.meta['cron_string'], "0 15 * * *")
@@ -531,7 +531,7 @@ class TestScheduler(RQTestCase):
 
     def test_crontab_rescheduled_correctly_with_timezone(self):
         # Create a job with a cronjob_string
-        timezone = dateutil.tz.gettz('Asia/Jerusalem')
+        timezone = dateutil.tz.gettz('Europe/Kiev')
         job = self.scheduler.cron("1 15 * * *", say_hello, timezone=timezone)
 
         # change crontab
@@ -605,19 +605,18 @@ class TestScheduler(RQTestCase):
         # Ensure that an error is raised if repeat is specified without interval
         def create_job():
             self.scheduler.schedule(datetime.utcnow(), say_hello, repeat=11)
-
         self.assertRaises(ValueError, create_job)
 
     def test_job_with_intervals_get_rescheduled(self):
         """
         Ensure jobs with interval attribute are put back in the scheduler
         """
-        time_now = datetime.utcnow()
+        time_now = datetime.now(tz=dateutil.tz.gettz('Europe/Kiev'))
         interval = 10
         job = self.scheduler.schedule(time_now, say_hello, interval=interval)
         self.scheduler.enqueue_job(job)
         self.assertIn(job.id,
-                      tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          to_unix(time_now) + interval)
 
@@ -646,7 +645,7 @@ class TestScheduler(RQTestCase):
         self.scheduler.enqueue_job(job)
 
         self.assertIn(job.id,
-                      tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
         # check that next scheduled time has changed
         self.assertNotEqual(old_next_scheduled_time,
@@ -668,16 +667,16 @@ class TestScheduler(RQTestCase):
         job = self.scheduler.schedule(time_now, say_hello, interval=interval, repeat=1)
         self.scheduler.enqueue_job(job)
         self.assertNotIn(job.id,
-                         tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
         # If job is repeated twice, it should only be put back in the queue once
         job = self.scheduler.schedule(time_now, say_hello, interval=interval, repeat=2)
         self.scheduler.enqueue_job(job)
         self.assertIn(job.id,
-                      tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
         self.scheduler.enqueue_job(job)
         self.assertNotIn(job.id,
-                         tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
 
     def test_missing_jobs_removed_from_scheduler(self):
         """
@@ -737,7 +736,6 @@ class TestScheduler(RQTestCase):
         """
         Check correct signal handling in Scheduler.run().
         """
-
         def send_stop_signal():
             """
             Sleep for 1 second, then send a INT signal to ourself, so the
@@ -745,7 +743,6 @@ class TestScheduler(RQTestCase):
             """
             time.sleep(1)
             os.kill(os.getpid(), signal.SIGINT)
-
         thread = Thread(target=send_stop_signal)
         thread.start()
         self.assertRaises(SystemExit, self.scheduler.run)
@@ -774,24 +771,24 @@ class TestScheduler(RQTestCase):
         Test that scheduler accepts 'interval' of type float, less than 1 second.
         """
         lock_key = Scheduler.scheduler_lock_key
-        scheduler = Scheduler(connection=self.testconn, interval=0.1)  # testing interval = 0.1 second
+        scheduler = Scheduler(connection=self.testconn, interval=0.1)   # testing interval = 0.1 second
         self.assertEqual(scheduler._interval, 0.1)
 
-        # acquire lock
+        #acquire lock
         self.assertTrue(scheduler.acquire_lock())
         self.assertIn(lock_key, tl(self.testconn.keys('*')))
         self.assertEqual(self.testconn.ttl(lock_key), 10)  # int(0.1) + 10 = 10
 
-        # enqueue a job
+        #enqueue a job
         now = datetime.utcnow()
         job = scheduler.enqueue_at(now, say_hello)
         self.assertIn(job, self.scheduler.get_jobs_to_queue())
         self.assertEqual(len(list(self.scheduler.get_jobs())), 1)
 
-        # remove the lock
+        #remove the lock
         scheduler.remove_lock()
 
-        # test that run works with the small floating-point interval
+        #test that run works with the small floating-point interval
         def send_stop_signal():
             """
             Sleep for 1 second, then send a INT signal to ourself, so the
@@ -799,13 +796,12 @@ class TestScheduler(RQTestCase):
             """
             time.sleep(1)
             os.kill(os.getpid(), signal.SIGINT)
-
         thread = Thread(target=send_stop_signal)
         thread.start()
         self.assertRaises(SystemExit, scheduler.run)
         thread.join()
 
-        # all jobs must have been scheduled during 1 second
+        #all jobs must have been scheduled during 1 second
         self.assertEqual(len(list(scheduler.get_jobs())), 0)
 
     def test_get_queue_for_job_with_job_queue_name(self):
