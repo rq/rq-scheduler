@@ -8,6 +8,7 @@ from uuid import uuid4
 from datetime import datetime
 from itertools import repeat
 
+import dateutil
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
@@ -95,7 +96,7 @@ class Scheduler(object):
         now = time.time()
         expires = int(self._interval) + 10
         self._lock_acquired = self.connection.set(
-                key, now, ex=expires, nx=True)
+            key, now, ex=expires, nx=True)
         return self._lock_acquired
 
     def remove_lock(self):
@@ -144,7 +145,7 @@ class Scheduler(object):
             func, args=args, connection=self.connection,
             kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
             description=description, timeout=timeout, meta=meta,
-            depends_on=depends_on,on_success=on_success,on_failure=on_failure,
+            depends_on=depends_on, on_success=on_success, on_failure=on_failure,
         )
         if queue_name:
             job.origin = queue_name
@@ -204,7 +205,7 @@ class Scheduler(object):
                                description=job_description, meta=meta, queue_name=queue_name, depends_on=depends_on,
                                on_success=on_success, on_failure=on_failure)
         self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(scheduled_time)})
+                             {job.id: to_unix(scheduled_time)})
         return job
 
     def enqueue_in(self, time_delta, func, *args, **kwargs):
@@ -229,7 +230,7 @@ class Scheduler(object):
                                description=job_description, meta=meta, queue_name=queue_name,
                                depends_on=depends_on, on_success=on_success, on_failure=on_failure)
         self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(datetime.utcnow() + time_delta)})
+                             {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
@@ -248,6 +249,7 @@ class Scheduler(object):
                                timeout=timeout, meta=meta, depends_on=depends_on,
                                on_success=on_success, on_failure=on_failure)
 
+        job.meta['timezone'] = scheduled_time.tzinfo
         if interval is not None:
             job.meta['interval'] = int(interval)
         if repeat is not None:
@@ -256,16 +258,17 @@ class Scheduler(object):
             raise ValueError("Can't repeat a job without interval argument")
         job.save()
         self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(scheduled_time)})
+                             {job.id: to_unix(scheduled_time)})
         return job
 
     def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
-             queue_name=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False,
-             depends_on=None, on_success=None, on_failure=None):
+             queue_name=None, id=None, timeout=None, description=None, meta=None,
+             timezone=dateutil.tz.UTC, depends_on=None, on_success=None, on_failure=None):
         """
         Schedule a cronjob
         """
-        scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
+        scheduled_time = get_next_scheduled_time(cron_string, timezone=timezone)
+        print(f'mext run at {scheduled_time}')
 
         # Set result_ttl to -1, as jobs scheduled via cron are periodic ones.
         # Otherwise the job would expire after 500 sec.
@@ -275,7 +278,7 @@ class Scheduler(object):
                                on_success=on_success, on_failure=on_failure)
 
         job.meta['cron_string'] = cron_string
-        job.meta['use_local_timezone'] = use_local_timezone
+        job.meta['timezone'] = timezone
 
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
@@ -283,7 +286,7 @@ class Scheduler(object):
         job.save()
 
         self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(scheduled_time)})
+                             {job.id: to_unix(scheduled_time)})
         return job
 
     def cancel(self, job):
@@ -349,6 +352,7 @@ class Scheduler(object):
         If either of offset or length is specified, then both must be, or
         an exception will be raised.
         """
+
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
 
@@ -403,7 +407,7 @@ class Scheduler(object):
         interval = job.meta.get('interval', None)
         repeat = job.meta.get('repeat', None)
         cron_string = job.meta.get('cron_string', None)
-        use_local_timezone = job.meta.get('use_local_timezone', None)
+        timezone = job.meta.get('timezone', dateutil.tz.UTC)
 
         # If job is a repeated job, decrement counter
         if repeat:
@@ -419,13 +423,13 @@ class Scheduler(object):
                 if job.meta['repeat'] == 0:
                     return
             self.connection.zadd(self.scheduled_jobs_key,
-                                  {job.id: to_unix(datetime.utcnow()) + int(interval)})
+                                 {job.id: to_unix(datetime.utcnow()) + int(interval)})
         elif cron_string:
             # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
-            next_scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
+            next_scheduled_time = get_next_scheduled_time(cron_string, timezone=timezone)
             self.connection.zadd(self.scheduled_jobs_key,
                                  {job.id: to_unix(next_scheduled_time)})
 
@@ -438,7 +442,7 @@ class Scheduler(object):
         jobs = self.get_jobs_to_queue()
         for job in jobs:
             self.enqueue_job(job)
-        
+
         return jobs
 
     def heartbeat(self):
