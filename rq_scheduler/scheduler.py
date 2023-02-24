@@ -175,6 +175,7 @@ class Scheduler(object):
         - queue_name
         - on_success
         - on_failure
+        - at_front
 
         Usage:
 
@@ -198,11 +199,14 @@ class Scheduler(object):
         queue_name = kwargs.pop('queue_name', None)
         on_success = kwargs.pop('on_success', None)
         on_failure = kwargs.pop('on_failure', None)
+        at_front = kwargs.pop('at_front', None)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description, meta=meta, queue_name=queue_name, depends_on=depends_on,
                                on_success=on_success, on_failure=on_failure)
+        if at_front:
+            job.enqueue_at_front = True
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
@@ -223,11 +227,14 @@ class Scheduler(object):
         queue_name = kwargs.pop('queue_name', None)
         on_success = kwargs.pop('on_success', None)
         on_failure = kwargs.pop('on_failure', None)
+        at_front = kwargs.pop('at_front', False)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description, meta=meta, queue_name=queue_name,
                                depends_on=depends_on, on_success=on_success, on_failure=on_failure)
+        if at_front:
+            job.enqueue_at_front = True
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
@@ -235,7 +242,8 @@ class Scheduler(object):
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
                  interval=None, repeat=None, result_ttl=None, ttl=None,
                  timeout=None, id=None, description=None,
-                 queue_name=None, meta=None, depends_on=None, on_success=None, on_failure=None):
+                 queue_name=None, meta=None, depends_on=None, on_success=None,
+                 on_failure=None, at_front=None):
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -254,6 +262,8 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
+        if at_front:
+            job.enqueue_at_front = True
         job.save()
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
@@ -261,7 +271,7 @@ class Scheduler(object):
 
     def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
              queue_name=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False,
-             depends_on=None, on_success=None, on_failure=None):
+             depends_on=None, on_success=None, on_failure=None, at_front: bool = False):
         """
         Schedule a cronjob
         """
@@ -279,6 +289,9 @@ class Scheduler(object):
 
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
+        
+        if at_front:
+            job.enqueue_at_front = True
 
         job.save()
 
@@ -410,7 +423,7 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        queue.enqueue_job(job)
+        queue.enqueue_job(job, at_front=bool(job.enqueue_at_front))
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
