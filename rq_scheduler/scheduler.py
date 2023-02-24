@@ -12,7 +12,6 @@ from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
 from rq.utils import backend_class, import_attribute
-from rq.compat import string_types
 
 from redis import WatchError
 
@@ -43,7 +42,7 @@ class Scheduler(object):
         self._lock_acquired = False
         self.job_class = backend_class(self, 'job_class', override=job_class)
         self.queue_class_name = None
-        if isinstance(queue_class, string_types):
+        if isinstance(queue_class, str):
             self.queue_class_name = queue_class
         self.queue_class = backend_class(self, 'queue_class', override=queue_class)
         self.name = name or uuid4().hex
