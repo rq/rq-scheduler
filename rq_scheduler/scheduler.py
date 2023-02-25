@@ -12,7 +12,6 @@ from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from rq.queue import Queue
 from rq.utils import backend_class, import_attribute
-from rq.compat import string_types
 
 from redis import WatchError
 
@@ -43,7 +42,7 @@ class Scheduler(object):
         self._lock_acquired = False
         self.job_class = backend_class(self, 'job_class', override=job_class)
         self.queue_class_name = None
-        if isinstance(queue_class, string_types):
+        if isinstance(queue_class, str):
             self.queue_class_name = queue_class
         self.queue_class = backend_class(self, 'queue_class', override=queue_class)
         self.name = name or uuid4().hex
@@ -176,6 +175,7 @@ class Scheduler(object):
         - queue_name
         - on_success
         - on_failure
+        - at_front
 
         Usage:
 
@@ -200,11 +200,16 @@ class Scheduler(object):
         on_success = kwargs.pop('on_success', None)
         on_failure = kwargs.pop('on_failure', None)
         serializer = kwargs.pop('serializer', None)
+        at_front = kwargs.pop('at_front', None)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description, meta=meta, queue_name=queue_name, depends_on=depends_on,
                                on_success=on_success, on_failure=on_failure, serializer=serializer)
+
+        if at_front:
+            job.enqueue_at_front = True
+
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
@@ -226,11 +231,16 @@ class Scheduler(object):
         on_success = kwargs.pop('on_success', None)
         on_failure = kwargs.pop('on_failure', None)
         serializer = kwargs.pop('serializer', None)
+        at_front = kwargs.pop('at_front', False)
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout,
                                id=job_id, result_ttl=job_result_ttl, ttl=job_ttl,
                                description=job_description, meta=meta, queue_name=queue_name,
                                depends_on=depends_on, on_success=on_success, on_failure=on_failure, serializer=serializer)
+                               
+        if at_front:
+            job.enqueue_at_front = True
+            
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
@@ -238,7 +248,9 @@ class Scheduler(object):
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
                  interval=None, repeat=None, result_ttl=None, ttl=None,
                  timeout=None, id=None, description=None,
-                 queue_name=None, meta=None, depends_on=None, on_success=None, on_failure=None, serializer=None):
+                 queue_name=None, meta=None, depends_on=None, on_success=None, 
+                 on_failure=None, serializer=None, at_front=None):
+
         """
         Schedule a job to be periodically executed, at a certain interval.
         """
@@ -257,23 +269,24 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat)
         if repeat and interval is None:
             raise ValueError("Can't repeat a job without interval argument")
+        if at_front:
+            job.enqueue_at_front = True
         job.save()
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
 
     def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
-             queue_name=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False,
-             depends_on=None, on_success=None, on_failure=None, serializer=None):
+             queue_name=None, result_ttl=-1, ttl=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False,
+             depends_on=None, on_success=None, on_failure=None, serializer=None, at_front: bool = False):
+
         """
         Schedule a cronjob
         """
         scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
 
-        # Set result_ttl to -1, as jobs scheduled via cron are periodic ones.
-        # Otherwise the job would expire after 500 sec.
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
-                               result_ttl=-1, id=id, queue_name=queue_name,
+                               result_ttl=result_ttl, ttl=ttl, id=id, queue_name=queue_name,
                                description=description, timeout=timeout, meta=meta, depends_on=depends_on,
                                on_success=on_success, on_failure=on_failure, serializer=serializer)
 
@@ -282,6 +295,9 @@ class Scheduler(object):
 
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
+        
+        if at_front:
+            job.enqueue_at_front = True
 
         job.save()
 
@@ -413,7 +429,7 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        queue.enqueue_job(job)
+        queue.enqueue_job(job, at_front=bool(job.enqueue_at_front))
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
