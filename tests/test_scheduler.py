@@ -599,6 +599,43 @@ class TestScheduler(RQTestCase):
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertEqual(description, job_from_queue.description)
 
+    def test_cron_sets_default_result_ttl_to_minus_1(self):
+        """
+        Ensure that a job scheduled via crontab sets the default result_ttl to -1
+        """
+        result_ttl = -1
+        job = self.scheduler.cron("1 * * * *", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(result_ttl, job_from_queue.result_ttl)
+
+    def test_cron_sets_provided_result_ttl(self):
+        """
+        Ensure that a job scheduled via crontab can be created with
+        a custom result_ttl
+        """
+        result_ttl = 123
+        job = self.scheduler.cron("1 * * * *", say_hello, result_ttl=result_ttl)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(result_ttl, job_from_queue.result_ttl)
+
+    def test_cron_sets_default_ttl_to_none(self):
+        """
+        Ensure that a job scheduled via crontab sets the default result_ttl to -1
+        """
+        job = self.scheduler.cron("1 * * * *", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertIsNone(job_from_queue.ttl)
+
+    def test_cron_sets_provided_ttl(self):
+        """
+        Ensure that a job scheduled via crontab can be created with
+        a custom result_ttl
+        """
+        ttl = 123
+        job = self.scheduler.cron("1 * * * *", say_hello, ttl=ttl)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(ttl, job_from_queue.ttl)
+
     def test_repeat_without_interval_raises_error(self):
         # Ensure that an error is raised if repeat is specified without interval
         def create_job():
