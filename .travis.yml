@@ -1,11 +1,14 @@
 language: python
-dist: bionic
+dist: focal
 
 python:
   - "3.5"
   - "3.6"
   - "3.7"
   - "3.8"
+  - "3.9"
+  - "3.10"
+  - "3.11"
 
 install:
   - "python setup.py install"
