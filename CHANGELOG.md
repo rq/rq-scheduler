@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.12.0 (2023-02-25)
+* Minimum Python version is now 3.6. Thanks @ronlut!
+* Support for RQ 0.13. Thanks @ronlut!
+* Added `at_front` parameter to `enqueue_at()`. Thanks @gabriels1234!
+* Added support for `on_success` and `on_failure` handler to `enqueue_*` methods. Thanks @andy-takker!
+
 ## Version 0.11.0 (2021-03-07)
 * `Scheduler` now accepts `queue_class` argument. Thanks @gisce!
 * Fixes local timezone handling. Thanks @Eugeny!
