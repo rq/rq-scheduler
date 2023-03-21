@@ -428,7 +428,7 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        queue.enqueue_job(job, at_front=bool(job.enqueue_at_front))
+        queue.enqueue_job(job, at_front=bool(getattr(job, "enqueue_at_front", False)))
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
