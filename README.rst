@@ -58,7 +58,7 @@ There are two ways you can schedule a job. The first is using RQ Scheduler's ``e
 
     # You can also instantiate a Scheduler using an RQ Queue
     queue = Queue('bar', connection=Redis())
-    scheduler = Scheduler(queue=queue)
+    scheduler = Scheduler(queue=queue, connection=queue.connection)
 
     # Puts a job into the scheduler. The API is similar to RQ except that it
     # takes a datetime object as first argument. So for example to schedule a
