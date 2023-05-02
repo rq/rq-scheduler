@@ -320,10 +320,10 @@ class TestScheduler(RQTestCase):
         self.assertIn(job, self.scheduler.get_jobs(now))
         future_time = now + timedelta(hours=1)
         job = self.scheduler.enqueue_at(future_time, say_hello)
-        self.assertIn(job, self.scheduler.get_jobs(timedelta(hours=1, seconds=1)))
+        self.assertIn(job, self.scheduler.get_jobs(until=timedelta(hours=1, seconds=1)))
         self.assertIn(job, [j[0] for j in self.scheduler.get_jobs(with_times=True)])
         self.assertIsInstance(list(self.scheduler.get_jobs(with_times=True))[0][1], datetime)
-        self.assertNotIn(job, self.scheduler.get_jobs(timedelta(minutes=59, seconds=59)))
+        self.assertNotIn(job, self.scheduler.get_jobs(until=timedelta(minutes=59, seconds=59)))
 
     def test_get_jobs_slice(self):
         """
