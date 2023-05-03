@@ -91,6 +91,21 @@ popular a tweet is a few times during the course of the day, we could do somethi
 
 **IMPORTANT**: You should always use UTC datetime when working with `RQ Scheduler`_.
 
+The following additional ``kwargs`` are accepted by the ``enqueue_at`` and ``enqueue_in`` methods and passed to the create function of the job class in `RQ`_:
+
+* ``timeout``
+* ``job_id``
+* ``job_ttl``
+* ``job_results_ttl``
+* ``depends_on``
+* ``meta``
+* ``queue_name``
+* ``on_success``
+* ``on_failure``
+* ``serializer``
+* ``at_front``
+
+
 ------------------------
 Periodic & Repeated Jobs
 ------------------------
@@ -141,6 +156,23 @@ This is how you do it
         meta={'foo': 'bar'},        # Arbitrary pickleable data on the job itself
         use_local_timezone=False    # Interpret hours in the local timezone
     )
+
+
+The following additional ``kwargs`` are accepted by the ``schedule`` and ``cron`` methods and passed to the create function of the job class in `RQ`_:
+
+* ``timeout``
+* ``id`` (denotes the ``job_id``)
+* ``description``
+* ``queue_name``
+* ``result_ttl``
+* ``ttl``
+* ``meta``
+* ``depends_on``
+* ``on_success``
+* ``on_failure``
+* ``serializer``
+* ``at_front``
+
 
 -------------------------
 Retrieving scheduled jobs
