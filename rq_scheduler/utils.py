@@ -5,7 +5,7 @@ import dateutil.tz
 from datetime import datetime, timedelta
 import logging
 
-from rq.utils import ColorizingStreamHandler
+from rq.logutils import ColorizingStreamHandler
 
 
 # from_unix from times.from_unix()
