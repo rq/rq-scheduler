@@ -4,6 +4,7 @@ import time
 import os
 
 from typing import Dict
+from typing import Generator
 from typing import Optional
 from typing import Type
 from typing import List
@@ -408,7 +409,7 @@ class Scheduler(object):
         at_front: Optional[bool] = None
     ):
         """
-        Schedule a cronjob
+        Schedule a cronjob.
 
         Args:
             cron_string (str): The cronstring.
@@ -454,7 +455,7 @@ class Scheduler(object):
         )
         return job
 
-    def cancel(self, job: 'Job' | str):
+    def cancel(self, job: 'Job | str'):
         """Pulls a job from the scheduler queue.
         Accepts either a job_id or a job instance.
 
@@ -466,7 +467,7 @@ class Scheduler(object):
         else:
             self.connection.zrem(self.scheduled_jobs_key, job)
 
-    def __contains__(self, item: 'Job' | str) -> Optional[float]:
+    def __contains__(self, item: 'Job | str') -> Optional[float]:
         """Returns a boolean indicating whether the given job instance or job id
         is scheduled for execution.
 
@@ -506,19 +507,28 @@ class Scheduler(object):
                         raise ValueError('Job not in scheduled jobs queue')
                     continue
 
-    def count(self, until=None):
-        """
-        Returns the total number of jobs that are scheduled for all queues.
+    def count(self, until: Union[None, datetime, timedelta, int] = None) -> int:
+        """Returns the total number of jobs that are scheduled for all queues.
         This function accepts datetime, timedelta instances as well as
         integers representing epoch values.
-        """
 
+        Args:
+            until (Union[None, datetime, timedelta, int], optional): Until. Defaults to None.
+
+        Returns:
+            int: The total number of jobs that are scheduled for all queues.
+        """        
         until = rationalize_until(until)
         return self.connection.zcount(self.scheduled_jobs_key, 0, until)
 
-    def get_jobs(self, until=None, with_times=False, offset=None, length=None):
-        """
-        Returns a iterator of job instances that will be queued until the given
+    def get_jobs(
+        self,
+        until: Union[None, datetime, timedelta, int] = None,
+        with_times: bool = False,
+        offset: Optional[int] = None,
+        length: Optional[int] = None
+    ) -> Generator[Union[Job, Tuple[Job, datetime]], None, None]:
+        """Returns a iterator of job instances that will be queued until the given
         time. If no 'until' argument is given all jobs are returned.
 
         If with_times is True, a list of tuples consisting of the job instance
@@ -529,6 +539,15 @@ class Scheduler(object):
 
         If either of offset or length is specified, then both must be, or
         an exception will be raised.
+
+        Args:
+            until (Union[None, datetime, timedelta, int], optional): Time limit to get get jobs. Defaults to None.
+            with_times (bool, optional): Whether to add the scheduled execution in the response. Defaults to False.
+            offset (int, optional): Start list at. Defaults to None.
+            length (int, optional): List length. Defaults to None.
+
+        Yields:
+            job: The job instance or a tuple of job instance and scheduled execution time.
         """
         def epoch_to_datetime(epoch):
             return from_unix(float(epoch))
@@ -553,18 +572,30 @@ class Scheduler(object):
             else:
                 yield job
 
-    def get_jobs_to_queue(self, with_times=False):
+    def get_jobs_to_queue(self, with_times: bool = False) -> Generator[Union[Job, Tuple[Job, datetime]], None, None]:
         """
         Returns a list of job instances that should be queued
         (score lower than current timestamp).
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
+
+        Args:
+            with_times (bool, optional): Whether to add the scheduled execution in the response. Defaults to False.
+
+        Returns:
+            list: List of job instances or a list of tuples of job instances and scheduled execution time.
         """
         return self.get_jobs(to_unix(datetime.utcnow()), with_times=with_times)
 
-    def get_queue_for_job(self, job):
+    def get_queue_for_job(self, job: 'Job') -> 'Queue':
         """
         Returns a queue to put job into.
+
+        Args:
+            job (Job): The job to get queue for.
+
+        Returns:
+            Queue: The queue to put job into.
         """
         key = '{0}{1}'.format(self.queue_class.redis_queue_namespace_prefix,
                               job.origin)
@@ -574,10 +605,14 @@ class Scheduler(object):
             queue_class = self.queue_class
         return queue_class.from_queue_key(key, connection=self.connection, job_class=self.job_class)
 
-    def enqueue_job(self, job):
-        """
-        Move a scheduled job to a queue. In addition, it also does puts the job
-        back into the scheduler if needed.
+    def enqueue_job(self, job: 'Job'):
+        """Move a scheduled job to a queue.
+        In addition, it also does puts the job back into the scheduler if needed.
+        If job is a repeated job, decrement counter.
+        If job is a repeat job and counter has reached 0, don't repeat.
+
+        Args:
+            job (Job): The job to enqueue.
         """
         self.log.debug('Pushing {0}({1}) to {2}'.format(job.func_name, job.id, job.origin))
 
@@ -586,7 +621,6 @@ class Scheduler(object):
         cron_string = job.meta.get('cron_string', None)
         use_local_timezone = job.meta.get('use_local_timezone', None)
 
-        # If job is a repeated job, decrement counter
         if repeat:
             job.meta['repeat'] = int(repeat) - 1
 
@@ -595,24 +629,29 @@ class Scheduler(object):
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
-            # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
-            self.connection.zadd(self.scheduled_jobs_key,
-                                  {job.id: to_unix(datetime.utcnow()) + int(interval)})
+            self.connection.zadd(
+                self.scheduled_jobs_key,
+                {job.id: to_unix(datetime.utcnow()) + int(interval)}
+            )
         elif cron_string:
-            # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
                 if job.meta['repeat'] == 0:
                     return
             next_scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
-            self.connection.zadd(self.scheduled_jobs_key,
-                                 {job.id: to_unix(next_scheduled_time)})
+            self.connection.zadd(
+                self.scheduled_jobs_key,
+                {job.id: to_unix(next_scheduled_time)}
+            )
 
-    def enqueue_jobs(self):
+    def enqueue_jobs(self) -> Generator[Job | Tuple[Job, datetime], None, None]:
         """
         Move scheduled jobs into queues.
+
+        Returns:
+            jobs: List (a Generator) of jobs that were moved into queues.
         """
         self.log.debug('Checking for scheduled jobs')
 
@@ -630,12 +669,11 @@ class Scheduler(object):
         self.log.debug('{}: Sending a HeartBeat'.format(self.key))
         self.connection.expire(self.key, int(self._interval) + 10)
 
-    def run(self, burst=False):
+    def run(self, burst: bool = False):
         """
         Periodically check whether there's any job that should be put in the queue (score
         lower than current time).
         """
-
         self.register_birth()
         self._install_signal_handlers()
 
