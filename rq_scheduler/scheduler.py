@@ -31,15 +31,15 @@ class Scheduler(object):
     job_class = Job
 
     def __init__(
-            self,
-            queue_name: str = 'default',
-            queue: Optional['Queue'] = None,
-            interval: int = 60,
-            connection: Optional['Connection'] = None,
-            job_class: Optional[Type['Job']] = None,
-            queue_class: Optional[Type['Queue']] = None,
-            name: Optional[str] = None
-        ):
+        self,
+        queue_name: str = 'default',
+        queue: Optional['Queue'] = None,
+        interval: int = 60,
+        connection: Optional['Connection'] = None,
+        job_class: Optional[Type['Job']] = None,
+        queue_class: Optional[Type['Queue']] = None,
+        name: Optional[str] = None
+    ):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self._queue = queue
@@ -68,6 +68,16 @@ class Scheduler(object):
         return os.getpid()
 
     def register_birth(self):
+        """Registers the scheduler birth.
+        It will raise a `ValueError` if there's already an active scheduler.
+        If the scheduler is already registered, it will update the heartbeat.
+
+        The registration process sets the scheduler key to expire a few seconds after polling interval
+        This way, the key will automatically expire if scheduler quits unexpectedly
+
+        Raises:
+            ValueError: If there's already an active scheduler.
+        """
         self.log.info('Registering birth')
         if self.connection.exists(self.key) and \
                 not self.connection.hexists(self.key, 'death'):
@@ -79,37 +89,36 @@ class Scheduler(object):
         with self.connection.pipeline() as p:
             p.delete(key)
             p.hset(key, 'birth', now)
-            # Set scheduler key to expire a few seconds after polling interval
-            # This way, the key will automatically expire if scheduler
-            # quits unexpectedly
             p.expire(key, int(self._interval) + 10)
             p.execute()
 
     def register_death(self):
-        """Registers its own death."""
+        """Registers its own death.
+        This will set the `death` key to the current timestamp,
+        and set the scheduler key to expire in 60 seconds.
+        """
         self.log.info('Registering death')
         with self.connection.pipeline() as p:
             p.hset(self.key, 'death', time.time())
             p.expire(self.key, 60)
             p.execute()
 
-    def acquire_lock(self):
-        """
-        Acquire lock before scheduling jobs to prevent another scheduler
+    def acquire_lock(self) -> bool:
+        """Acquires a lock before scheduling jobs to prevent another scheduler
         from scheduling jobs at the same time.
 
-        This function returns True if a lock is acquired. False otherwise.
+        Returns:
+            bool: True if lock is acquired. False otherwise.
         """
         key = self.scheduler_lock_key
         now = time.time()
         expires = int(self._interval) + 10
-        self._lock_acquired = self.connection.set(
-                key, now, ex=expires, nx=True)
+        self._lock_acquired = self.connection.set(key, now, ex=expires, nx=True)
         return self._lock_acquired
 
     def remove_lock(self):
-        """
-        Remove acquired lock.
+        """Removes the lock if it was acquired.
+        Deletes the key and sets the internal lock property (_lock_acquired) to False.
         """
         key = self.scheduler_lock_key
 
@@ -119,11 +128,9 @@ class Scheduler(object):
             self.log.debug('{}: Lock Removed'.format(self.key))
 
     def _install_signal_handlers(self):
-        """
-        Installs signal handlers for handling SIGINT and SIGTERM
+        """Installs signal handlers for handling SIGINT and SIGTERM
         gracefully.
         """
-
         def stop(signum, frame):
             """
             Register scheduler's death and exit
