@@ -3,8 +3,11 @@ import signal
 import time
 import os
 
+from typing import Optional
+from typing import Type
 from uuid import uuid4
 from redis import WatchError
+from redis import Connection
 from datetime import datetime
 from itertools import repeat
 
@@ -27,8 +30,16 @@ class Scheduler(object):
     queue_class = Queue
     job_class = Job
 
-    def __init__(self, queue_name='default', queue=None, interval=60, connection=None,
-                 job_class=None, queue_class=None, name=None):
+    def __init__(
+            self,
+            queue_name: str = 'default',
+            queue: Optional['Queue'] = None,
+            interval: int = 60,
+            connection: Optional['Connection'] = None,
+            job_class: Optional[Type['Job']] = None,
+            queue_class: Optional[Type['Queue']] = None,
+            name: Optional[str] = None
+        ):
         from rq.connections import resolve_connection
         self.connection = resolve_connection(connection)
         self._queue = queue
