@@ -214,36 +214,48 @@ class Scheduler(object):
             job.save()
         return job
 
-    def enqueue_at(self, scheduled_time, func, *args, **kwargs):
+    def enqueue_at(self, scheduled_time: datetime, func: 'FunctionReferenceType', *args, **kwargs) -> 'Job':
         """
-        Pushes a job to the scheduler queue. The scheduled queue is a Redis sorted
-        set ordered by timestamp - which in this case is job's scheduled execution time.
+        Pushes a job to be execute at the given `scheduled_time` to the scheduler queue.
+        The scheduled queue is a Redis sorted set ordered by timestamp
+        which in this case is job's scheduled execution time.
 
-        All args and kwargs are passed onto the job, except for the following kwarg
-        keys (which affect the job creation itself):
-        - timeout
-        - job_id
-        - job_ttl
-        - job_result_ttl
-        - job_description
-        - depends_on
-        - meta
-        - queue_name
-        - on_success
-        - on_failure
-        - at_front
+        All *args and **kwargs are passed onto the job,
+        except for the following kwarg keys (which affect the job creation itself):
+            - timeout
+            - job_id
+            - job_ttl
+            - job_result_ttl
+            - job_description
+            - depends_on
+            - meta
+            - queue_name
+            - on_success
+            - on_failure
+            - at_front
 
-        Usage:
+        Example::
 
-        from datetime import datetime
-        from redis import Redis
-        from rq.scheduler import Scheduler
+            ..code-block::python
 
-        from foo import func
+                from datetime import datetime
+                from redis import Redis
+                from rq.scheduler import Scheduler
 
-        redis = Redis()
-        scheduler = Scheduler(queue_name='default', connection=redis)
-        scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
+                from foo import func
+
+                redis = Redis()
+                scheduler = Scheduler(queue_name='default', connection=redis)
+                scheduler.enqueue_at(datetime(2020, 1, 1), func, 'argument', keyword='argument')
+        
+        Args:
+            scheduled_time (datetime): The scheduled time to execute the job.
+            func (FunctionReferenceType): The reference to the function to be executed.
+            *args: Function args.
+            **kwargs: Function kwargs.
+
+        Returns:
+            Job: The created job instance.
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
