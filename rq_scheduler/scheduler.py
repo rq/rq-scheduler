@@ -455,24 +455,24 @@ class Scheduler(object):
         )
         return job
 
-    def cancel(self, job: 'Job | str'):
+    def cancel(self, job: Union['Job', str]):
         """Pulls a job from the scheduler queue.
         Accepts either a job_id or a job instance.
 
         Args:
-            job (Job | str): The job to cancel, either a job instance or a job id.
+            job (Union[Job, str]): The job to cancel, either a job instance or a job id.
         """
         if isinstance(job, self.job_class):
             self.connection.zrem(self.scheduled_jobs_key, job.id)
         else:
             self.connection.zrem(self.scheduled_jobs_key, job)
 
-    def __contains__(self, item: 'Job | str') -> Optional[float]:
+    def __contains__(self, item: Union['Job', str]) -> Optional[float]:
         """Returns a boolean indicating whether the given job instance or job id
         is scheduled for execution.
 
         Args:
-            item (Job | str): The job to check, either a job instance or a job id.
+            item (Union[Job, str]): The job to check, either a job instance or a job id.
 
         Returns:
             float: Score of the job if it exists, None otherwise.
@@ -646,7 +646,7 @@ class Scheduler(object):
                 {job.id: to_unix(next_scheduled_time)}
             )
 
-    def enqueue_jobs(self) -> Generator[Job | Tuple[Job, datetime], None, None]:
+    def enqueue_jobs(self) -> Generator[Union[Job, Tuple[Job, datetime]], None, None]:
         """
         Move scheduled jobs into queues.
 
