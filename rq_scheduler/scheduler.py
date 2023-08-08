@@ -3,8 +3,14 @@ import signal
 import time
 import os
 
+from typing import Dict
 from typing import Optional
 from typing import Type
+from typing import List
+from typing import Union
+from typing import Tuple
+from typing import Any
+from typing import Callable
 from uuid import uuid4
 from redis import WatchError
 from redis import Connection
@@ -13,7 +19,10 @@ from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
+from rq.job import Callback
 from rq.queue import Queue
+from rq.types import FunctionReferenceType
+from rq.types import JobDependencyType
 from rq.utils import backend_class, import_attribute
 
 from .utils import from_unix, to_unix, get_next_scheduled_time, rationalize_until
@@ -121,7 +130,6 @@ class Scheduler(object):
         Deletes the key and sets the internal lock property (_lock_acquired) to False.
         """
         key = self.scheduler_lock_key
-
         if self._lock_acquired:
             self.connection.delete(key)
             self._lock_acquired = False
@@ -142,15 +150,47 @@ class Scheduler(object):
             raise SystemExit()
 
         signal.signal(signal.SIGINT, stop)
-        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGTERM, stop)  
 
-    def _create_job(self, func, args=None, kwargs=None, commit=True,
-                    result_ttl=None, ttl=None, id=None, description=None,
-                    queue_name=None, timeout=None, meta=None, depends_on=None, on_success=None, on_failure=None):
-        """
-        Creates an RQ job and saves it to Redis. The job is assigned to the
-        given queue name if not None else it is assigned to scheduler queue by
-        default.
+    def _create_job(
+            self,
+            func: FunctionReferenceType,
+            args: Union[List[Any], Optional[Tuple]] = None,
+            kwargs: Optional[Dict[str, Any]] = None,
+            commit: bool = True,
+            result_ttl: Optional[int] = None,
+            ttl: Optional[int] = None,
+            id: Optional[str] = None,
+            description: Optional[str] = None,
+            queue_name: Optional[str] = None,
+            timeout: Optional[int] = None,
+            meta: Optional[Dict[str, Any]] = None,
+            depends_on: Optional[JobDependencyType] = None,
+            on_success: Optional[Union['Callback', Callable[..., Any]]] = None,
+            on_failure: Optional[Union['Callback', Callable[..., Any]]] = None,
+        ) -> 'Job':
+        """Creates an RQ job and saves it to Redis.
+        The job is assigned to the given queue name if not None
+        else it is assigned to scheduler queue by default.
+
+        Args:
+            func (FunctionReferenceType): The reference to the function to be executed.
+            args (Union[List[Any], Optional[Tuple]], optional): Function args. Defaults to None.
+            kwargs (Optional[Dict[str, Any]], optional): Function kwargs. Defaults to None.
+            commit (bool, optional): Whether to commit. Defaults to True.
+            result_ttl (Optional[int], optional): The result TTL. Defaults to None.
+            ttl (Optional[int], optional): The job TTL. Defaults to None.
+            id (Optional[str], optional): The job ID. Defaults to None.
+            description (Optional[str], optional): The job description. Defaults to None.
+            queue_name (Optional[str], optional): The queue name to use. Defaults to None.
+            timeout (Optional[int], optional): The job timeout. Defaults to None.
+            meta (Optional[Dict[str, Any]], optional): Metadata about the job. Defaults to None.
+            depends_on (Optional[JobDependencyType], optional): Job dependencies. Defaults to None.
+            on_success (Optional[Union[Callback, Callable[..., Any]]], optional): OnSucess Callback. Defaults to None.
+            on_failure (Optional[Union[Callback, Callable[..., Any]]], optional): OnFailure Callback. Defaults to None.
+
+        Returns:
+            Job: The created job instance.
         """
         if args is None:
             args = ()
