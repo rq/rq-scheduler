@@ -15,6 +15,7 @@ from uuid import uuid4
 from redis import WatchError
 from redis import Connection
 from datetime import datetime
+from datetime import timedelta
 from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
@@ -279,11 +280,19 @@ class Scheduler(object):
                               {job.id: to_unix(scheduled_time)})
         return job
 
-    def enqueue_in(self, time_delta, func, *args, **kwargs):
-        """
-        Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
+    def enqueue_in(self, time_delta: timedelta, func: 'FunctionReferenceType', *args, **kwargs) -> 'Job':
+        """Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
         The job's scheduled execution time will be calculated by adding the timedelta
         to datetime.utcnow().
+
+        Args:
+            time_delta (timedelta): The time delta to execute the job.
+            func (FunctionReferenceType): The reference to the function to be executed.
+            *args: Function args.
+            **kwargs: Function kwargs.
+
+        Returns:
+            Job: The created job instance.
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
