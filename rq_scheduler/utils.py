@@ -1,28 +1,50 @@
 import calendar
 import crontab
 import dateutil.tz
-
-from datetime import datetime, timedelta
 import logging
+
+from typing import Union
+from datetime import datetime
+from datetime import timedelta
 
 from rq.logutils import ColorizingStreamHandler
 
 
-# from_unix from times.from_unix()
-def from_unix(string):
-    """Convert a unix timestamp into a utc datetime"""
+def from_unix(string: str) -> datetime:
+    """Converts a unix timestamp into a datetime object
+
+    Args:
+        string (str): The unix timestamp
+
+    Returns:
+        datetime: The datetime object
+    """    
     return datetime.utcfromtimestamp(float(string))
 
 
-# to_unix from times.to_unix()
-def to_unix(dt):
-    """Converts a datetime object to unixtime"""
+def to_unix(dt: datetime) -> int:
+    """Converts a datetime object to unixtime
+
+    Args:
+        dt (datetime): The datetime object to convert
+
+    Returns:
+        timestamp (int): The unix timestamp
+    """
     return calendar.timegm(dt.utctimetuple())
 
 
-def get_next_scheduled_time(cron_string, use_local_timezone=False):
+def get_next_scheduled_time(cron_string: str, use_local_timezone: bool = False) -> datetime:
     """Calculate the next scheduled time by creating a crontab object
-    with a cron string"""
+    with a cron string
+
+    Args:
+        cron_string (str): The cron string
+        use_local_timezone (bool, optional): Whether to use the local timezone. Defaults to False.
+
+    Returns:
+        datetime: The next scheduled time as datetime object
+    """
     now = datetime.now()
     cron = crontab.CronTab(cron_string)
     next_time = cron.next(now=now, return_datetime=True)
@@ -30,7 +52,12 @@ def get_next_scheduled_time(cron_string, use_local_timezone=False):
     return next_time.astimezone(tz)
 
 
-def setup_loghandlers(level='INFO'):
+def setup_loghandlers(level: str = 'INFO'):
+    """Setup the log handlers for the scheduler
+
+    Args:
+        level (str, optional): The log level. Defaults to 'INFO'.
+    """    
     logger = logging.getLogger('rq_scheduler.scheduler')
     if not logger.handlers:
         logger.setLevel(level)
@@ -41,11 +68,15 @@ def setup_loghandlers(level='INFO'):
         logger.addHandler(handler)
 
 
-def rationalize_until(until=None):
-    """
-    Rationalizes the `until` argument used by other functions. This function
-    accepts datetime and timedelta instances as well as integers representing
-    epoch values.
+def rationalize_until(until: Union[None, datetime, timedelta, int] = None) -> Union[str, int]:
+    """Rationalizes the `until` argument used by other functions.
+    This function accepts datetime and timedelta instances as well as integers representing epoch values.
+
+    Args:
+        until (Union[None, datetime, timedelta], optional): The until argument. Defaults to None.
+
+    Returns:
+        Union[str, int]: The rationalized until argument
     """
     if until is None:
         until = "+inf"
