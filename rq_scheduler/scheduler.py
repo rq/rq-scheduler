@@ -154,22 +154,22 @@ class Scheduler(object):
         signal.signal(signal.SIGTERM, stop)  
 
     def _create_job(
-            self,
-            func: FunctionReferenceType,
-            args: Union[List[Any], Optional[Tuple]] = None,
-            kwargs: Optional[Dict[str, Any]] = None,
-            commit: bool = True,
-            result_ttl: Optional[int] = None,
-            ttl: Optional[int] = None,
-            id: Optional[str] = None,
-            description: Optional[str] = None,
-            queue_name: Optional[str] = None,
-            timeout: Optional[int] = None,
-            meta: Optional[Dict[str, Any]] = None,
-            depends_on: Optional[JobDependencyType] = None,
-            on_success: Optional[Union['Callback', Callable[..., Any]]] = None,
-            on_failure: Optional[Union['Callback', Callable[..., Any]]] = None,
-        ) -> 'Job':
+        self,
+        func: FunctionReferenceType,
+        args: Union[List[Any], Optional[Tuple]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
+        commit: bool = True,
+        result_ttl: Optional[int] = None,
+        ttl: Optional[int] = None,
+        id: Optional[str] = None,
+        description: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        timeout: Optional[int] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        depends_on: Optional[JobDependencyType] = None,
+        on_success: Optional[Union['Callback', Callable[..., Any]]] = None,
+        on_failure: Optional[Union['Callback', Callable[..., Any]]] = None,
+    ) -> 'Job':
         """Creates an RQ job and saves it to Redis.
         The job is assigned to the given queue name if not None
         else it is assigned to scheduler queue by default.
@@ -316,15 +316,54 @@ class Scheduler(object):
                               {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
 
-    def schedule(self, scheduled_time, func, args=None, kwargs=None,
-                 interval=None, repeat=None, result_ttl=None, ttl=None,
-                 timeout=None, id=None, description=None,
-                 queue_name=None, meta=None, depends_on=None, on_success=None,
-                 on_failure=None, at_front=None):
-        """
-        Schedule a job to be periodically executed, at a certain interval.
-        """
-        # Set result_ttl to -1 for periodic jobs, if result_ttl not specified
+    def schedule(
+        self,
+        scheduled_time: datetime,
+        func: 'FunctionReferenceType',
+        args: Union[List[Any], Optional[Tuple]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
+        interval: Optional[Any] = None,
+        repeat: Optional[Any] = None,
+        result_ttl: Optional[int] = None,
+        ttl: Optional[int] = None,
+        timeout: Optional[int] = None,
+        id: Optional[str] = None,
+        description: Optional[str] = None,
+        queue_name: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        depends_on: Optional[JobDependencyType] = None,
+        on_success: Optional[Union['Callback', Callable[..., Any]]] = None,
+        on_failure: Optional[Union['Callback', Callable[..., Any]]] = None,
+        at_front: Optional[bool] = None
+    ) -> 'Job':
+        """Schedule a job to be periodically executed, at a certain interval.
+        Set result_ttl to -1 for periodic jobs, if result_ttl not specified
+
+        Args:
+            scheduled_time (datetime): The scheduled time to execute the job.
+            func (FunctionReferenceType): The reference to the function to be executed.
+            args (Union[List[Any], Optional[Tuple]], optional): Function args. Defaults to None.
+            kwargs (Optional[Dict[str, Any]], optional): Function kwargs. Defaults to None.
+            interval (Optional[Any], optional): Interval to run. Defaults to None.
+            repeat (Optional[Any], optional): Repeat. Defaults to None.
+            result_ttl (Optional[int], optional): The Result TTL. Defaults to None.
+            ttl (Optional[int], optional): The Job TTL. Defaults to None.
+            timeout (Optional[int], optional): The Job Timeout. Defaults to None.
+            id (Optional[str], optional): The Job ID. Defaults to None.
+            description (Optional[str], optional): The Job description. Defaults to None.
+            queue_name (Optional[str], optional): The queue name. Defaults to None.
+            meta (Optional[Dict[str, Any]], optional): Job metadata. Defaults to None.
+            depends_on (Optional[JobDependencyType], optional): Job dependencies. Defaults to None.
+            on_success (Optional[Union[Callback, Callable[..., Any]]], optional): Job OnSuccess Callback. Defaults to None.
+            on_failure (Optional[Union[Callback, Callable[..., Any]]], optional): Job OnFailure Callback. Defaults to None.
+            at_front (Optional[bool], optional): Whether the job should be placed at the front of the queue. Defaults to None.
+
+        Raises:
+            ValueError: If repeat exists but interval is not defined.
+
+        Returns:
+            Job: The created job instance.
+        """        
         if interval is not None and result_ttl is None:
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
@@ -342,8 +381,10 @@ class Scheduler(object):
         if at_front:
             job.enqueue_at_front = True
         job.save()
-        self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(scheduled_time)})
+        self.connection.zadd(
+            self.scheduled_jobs_key,
+            {job.id: to_unix(scheduled_time)}
+        )
         return job
 
     def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
