@@ -363,7 +363,7 @@ class Scheduler(object):
 
         Returns:
             Job: The created job instance.
-        """        
+        """
         if interval is not None and result_ttl is None:
             result_ttl = -1
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
@@ -387,14 +387,52 @@ class Scheduler(object):
         )
         return job
 
-    def cron(self, cron_string, func, args=None, kwargs=None, repeat=None,
-             queue_name=None, result_ttl=-1, ttl=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False,
-             depends_on=None, on_success=None, on_failure=None, at_front: bool = False):
+    def cron(
+        self,
+        cron_string: str,
+        func: 'FunctionReferenceType',
+        args: Union[List[Any], Optional[Tuple]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
+        repeat: Optional[Any] = None,
+        queue_name: Optional[str] = None,
+        result_ttl: int = -1,
+        ttl: Optional[int] = None,
+        id: Optional[str] = None,
+        timeout: Optional[int] = None,
+        description: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        use_local_timezone: bool = False,
+        depends_on: Optional[JobDependencyType] = None,
+        on_success: Optional[Union['Callback', Callable[..., Any]]] = None,
+        on_failure: Optional[Union['Callback', Callable[..., Any]]] = None,
+        at_front: Optional[bool] = None
+    ):
         """
         Schedule a cronjob
+
+        Args:
+            cron_string (str): The cronstring.
+            func (FunctionReferenceType): The reference to the function to be executed.
+            args (Union[List[Any], Optional[Tuple]], optional): Function args. Defaults to None.
+            kwargs (Optional[Dict[str, Any]], optional): Function kwargs. Defaults to None.
+            repeat (Optional[Any], optional): Repeat. Defaults to None.
+            queue_name (Optional[str], optional): The queue name. Defaults to None.
+            result_ttl (int): The Result TTL. Defaults to -1.
+            ttl (Optional[int], optional): The Job TTL. Defaults to None.
+            id (Optional[str], optional): The Job ID. Defaults to None.
+            timeout (Optional[int], optional): The Job Timeout. Defaults to None.
+            description (Optional[str], optional): The Job description. Defaults to None.
+            meta (Optional[Dict[str, Any]], optional): Job metadata. Defaults to None.
+            use_local_timezone (bool): Whether to use the local timezone. Defaults to False.
+            depends_on (Optional[JobDependencyType], optional): Job dependencies. Defaults to None.
+            on_success (Optional[Union[Callback, Callable[..., Any]]], optional): Job OnSuccess Callback. Defaults to None.
+            on_failure (Optional[Union[Callback, Callable[..., Any]]], optional): Job OnFailure Callback. Defaults to None.
+            at_front (Optional[bool], optional): Whether the job should be placed at the front of the queue. Defaults to None.
+
+        Returns:
+            Job: The created job instance.
         """
         scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
-
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, ttl=ttl, id=id, queue_name=queue_name,
                                description=description, timeout=timeout, meta=meta, depends_on=depends_on,
@@ -410,9 +448,10 @@ class Scheduler(object):
             job.enqueue_at_front = True
 
         job.save()
-
-        self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(scheduled_time)})
+        self.connection.zadd(
+            self.scheduled_jobs_key,
+            {job.id: to_unix(scheduled_time)}
+        )
         return job
 
     def cancel(self, job):
