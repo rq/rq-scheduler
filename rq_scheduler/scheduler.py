@@ -2,9 +2,9 @@ import logging
 import signal
 import time
 import os
-import socket
-from uuid import uuid4
 
+from uuid import uuid4
+from redis import WatchError
 from datetime import datetime
 from itertools import repeat
 
@@ -13,9 +13,8 @@ from rq.job import Job
 from rq.queue import Queue
 from rq.utils import backend_class, import_attribute
 
-from redis import WatchError
-
 from .utils import from_unix, to_unix, get_next_scheduled_time, rationalize_until
+
 
 logger = logging.getLogger(__name__)
 
