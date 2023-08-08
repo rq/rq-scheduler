@@ -454,29 +454,44 @@ class Scheduler(object):
         )
         return job
 
-    def cancel(self, job):
-        """
-        Pulls a job from the scheduler queue. This function accepts either a
-        job_id or a job instance.
+    def cancel(self, job: 'Job' | str):
+        """Pulls a job from the scheduler queue.
+        Accepts either a job_id or a job instance.
+
+        Args:
+            job (Job | str): The job to cancel, either a job instance or a job id.
         """
         if isinstance(job, self.job_class):
             self.connection.zrem(self.scheduled_jobs_key, job.id)
         else:
             self.connection.zrem(self.scheduled_jobs_key, job)
 
-    def __contains__(self, item):
-        """
-        Returns a boolean indicating whether the given job instance or job id
+    def __contains__(self, item: 'Job' | str) -> Optional[float]:
+        """Returns a boolean indicating whether the given job instance or job id
         is scheduled for execution.
+
+        Args:
+            item (Job | str): The job to check, either a job instance or a job id.
+
+        Returns:
+            float: Score of the job if it exists, None otherwise.
         """
         job_id = item
         if isinstance(item, self.job_class):
             job_id = item.id
         return self.connection.zscore(self.scheduled_jobs_key, job_id) is not None
 
-    def change_execution_time(self, job, date_time):
-        """
-        Change a job's execution time.
+    def change_execution_time(self, job: 'Job', date_time: datetime):
+        """Change a job's execution time.
+        If job is still in the queue, retry
+        otherwise job is already executed so we raise an error
+
+        Args:
+            job (Job): The job to change.
+            date_time (datetime): The new execution time.
+
+        Raises:
+            ValueError: If job is not in scheduled jobs queue, or if job is already executed.
         """
         with self.connection.pipeline() as pipe:
             while 1:
@@ -487,8 +502,6 @@ class Scheduler(object):
                     pipe.zadd(self.scheduled_jobs_key, {job.id: to_unix(date_time)})
                     break
                 except WatchError:
-                    # If job is still in the queue, retry otherwise job is already executed
-                    # so we raise an error
                     if pipe.zscore(self.scheduled_jobs_key, job.id) is None:
                         raise ValueError('Job not in scheduled jobs queue')
                     continue
