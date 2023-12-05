@@ -311,6 +311,36 @@ class TestScheduler(RQTestCase):
         self.assertEqual(self.scheduler.count(future_test_time), 1)
         self.assertEqual(self.scheduler.count(), 2)
 
+    def test_queue_duplicates(self):
+        """
+        Ensure that jobs without meta.allow_duplicates nor meta.unique_id can enque many
+        """
+        time_now_minus10 = datetime.utcnow() - timedelta(minutes=10)
+        interval = 1
+        job_id = 'testingmany'
+        job = self.scheduler.schedule(time_now_minus10, say_hello, id=job_id, interval=interval, queue_name='allow_dupes_many_queue')
+        job_queue = self.scheduler.get_queue_for_job(job)
+        self.scheduler.enqueue_job(job)
+        self.assertEqual([job_id], [j.id for j in job_queue.jobs])
+        self.scheduler.enqueue_job(job)
+        self.assertEqual([job_id, job_id], [j.id for j in job_queue.jobs])
+
+
+    def test_job_with_allow_duplicates_false_meta(self):
+        """
+        Ensure that jobs with meta.unique_job_id will NOT be queued if job is already queued with meta.unique_job_id
+        """
+        time_now_minus10 = datetime.utcnow() - timedelta(minutes=10)
+        interval = 1
+        job_unique_id = 'baba yaga'
+        meta = {'unique_job_id': job_unique_id}
+        job = self.scheduler.schedule(time_now_minus10, say_hello, interval=interval, meta=meta, queue_name='allow_dupes_false_queue')
+        job_queue = self.scheduler.get_queue_for_job(job)
+        self.scheduler.enqueue_job(job)
+        self.assertEqual([job_unique_id], [j.meta.get('unique_job_id', 'none') for j in job_queue.jobs])
+        self.scheduler.enqueue_job(job)
+        self.assertEqual([job_unique_id], [j.meta.get('unique_job_id', 'none') for j in job_queue.jobs])
+
     def test_get_jobs(self):
         """
         Ensure get_jobs() returns all jobs until the specified time.
