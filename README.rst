@@ -135,8 +135,8 @@ This is how you do it
         args=[arg1, arg2],          # Arguments passed into function when executed
         kwargs={'foo': 'bar'},      # Keyword arguments passed into function when executed
         repeat=10,                  # Repeat this number of times (None means repeat forever)
-        result_ttl=300              # Specify how long (in seconds) successful jobs and their results are kept. Defaults to -1 (forever)
-        ttl=200                     # Specifies the maximum queued time (in seconds) before it's discarded. Defaults to None (infinite TTL).
+        result_ttl=300,              # Specify how long (in seconds) successful jobs and their results are kept. Defaults to -1 (forever)
+        ttl=200,                     # Specifies the maximum queued time (in seconds) before it's discarded. Defaults to None (infinite TTL).
         queue_name=queue_name,      # In which queue the job should be put in
         meta={'foo': 'bar'},        # Arbitrary pickleable data on the job itself
         use_local_timezone=False    # Interpret hours in the local timezone
