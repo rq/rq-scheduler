@@ -23,7 +23,7 @@ def to_unix(dt):
 def get_next_scheduled_time(cron_string, use_local_timezone=False):
     """Calculate the next scheduled time by creating a crontab object
     with a cron string"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     cron = crontab.CronTab(cron_string)
     next_time = cron.next(now=now, return_datetime=True)
     tz = dateutil.tz.tzlocal() if use_local_timezone else dateutil.tz.UTC
@@ -52,5 +52,5 @@ def rationalize_until(until=None):
     elif isinstance(until, datetime):
         until = to_unix(until)
     elif isinstance(until, timedelta):
-        until = to_unix((datetime.utcnow() + until))
+        until = to_unix((datetime.now() + until))
     return until
