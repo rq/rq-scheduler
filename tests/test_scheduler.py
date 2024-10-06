@@ -27,7 +27,7 @@ def say_hello(name=None):
 
 
 def tl(l):
-    return [i for i in l]
+    return [i.decode() for i in l]
 
 
 def simple_addition(x, y, z):
