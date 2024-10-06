@@ -10,7 +10,6 @@ import freezegun
 from dateutil.tz import tzlocal
 from dateutil.tz import UTC
 from rq import Queue
-from rq.compat import as_text
 from rq.job import Job
 
 from rq_scheduler import Scheduler
@@ -28,7 +27,7 @@ def say_hello(name=None):
 
 
 def tl(l):
-    return [as_text(i) for i in l]
+    return [i for i in l]
 
 
 def simple_addition(x, y, z):
