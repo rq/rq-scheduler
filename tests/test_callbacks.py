@@ -81,7 +81,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_failure_callback(self):
         """Test failure callback is executed only when job a fails"""
         queue = Queue(connection=self.testconn)
-        worker = Worker([queue], connection=self.testconn)
+        worker = Worker(['default', 'high'], connection=self.testconn)
 
         job = queue.enqueue(div_by_zero, on_failure=save_exception)
 
