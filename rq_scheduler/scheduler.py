@@ -9,7 +9,7 @@ from datetime import datetime
 from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
-from rq.job import Job
+from rq.job import Job, JobStatus
 from rq.queue import Queue
 from rq.utils import backend_class, import_attribute
 
@@ -144,7 +144,8 @@ class Scheduler(object):
             func, args=args, connection=self.connection,
             kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
             description=description, timeout=timeout, meta=meta,
-            depends_on=depends_on,on_success=on_success,on_failure=on_failure,
+            depends_on=depends_on, on_success=on_success, on_failure=on_failure,
+            status=JobStatus.SCHEDULED
         )
         if queue_name:
             job.origin = queue_name
