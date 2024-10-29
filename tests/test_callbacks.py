@@ -5,7 +5,7 @@ from tests.fixtures import div_by_zero, erroneous_callback, save_exception, save
 
 from rq import Queue, Worker
 from rq.job import Job, JobStatus, UNEVALUATED
-from rq.worker import SimpleWorker
+from rq.worker import SimpleWorker, Worker
 
 
 class QueueCallbackTestCase(RQTestCase):
@@ -81,7 +81,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_failure_callback(self):
         """Test failure callback is executed only when job a fails"""
         queue = Queue(connection=self.testconn)
-        worker = SimpleWorker([queue], connection=self.testconn)
+        worker = Worker([queue], connection=self.testconn)
 
         job = queue.enqueue(div_by_zero, on_failure=save_exception)
 
@@ -89,7 +89,6 @@ class WorkerCallbackTestCase(RQTestCase):
         worker.work(burst=True)
         self.assertEqual(job.get_status(), JobStatus.FAILED)
         job.refresh()
-        print(job.exc_info)
         self.assertIn('div_by_zero',
                       self.testconn.get('failure_callback:%s' % job.id).decode())
 
