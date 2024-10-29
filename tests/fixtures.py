@@ -15,7 +15,7 @@ import contextlib
 from multiprocessing import Process
 
 from redis import Redis
-from rq import Connection, get_current_job, get_current_connection, Queue
+from rq import get_current_job, Queue
 from rq.decorators import job
 from rq.worker import HerokuWorker, Worker
 
@@ -66,17 +66,6 @@ def some_calculation(x, y, z=1):
     return x * y / z
 
 
-def rpush(key, value, append_worker_name=False, sleep=0):
-    """Push a value into a list in Redis. Useful for detecting the order in
-    which jobs were executed."""
-    if sleep:
-        time.sleep(sleep)
-    if append_worker_name:
-        value += ':' + get_current_job().worker_name
-    redis = get_current_connection()
-    redis.rpush(key, value)
-
-
 def check_dependencies_are_met():
     return get_current_job().dependencies_are_met()
 
@@ -103,11 +92,6 @@ def launch_process_within_worker_and_store_pid(path, timeout):
     with open(path, 'w') as f:
         f.write('{}'.format(p.pid))
     p.wait()
-
-
-def access_self():
-    assert get_current_connection() is not None
-    assert get_current_job() is not None
 
 
 def modify_self(meta):
@@ -153,12 +137,6 @@ class ClassWithAStaticMethod(object):
     @staticmethod
     def static_method():
         return u"I'm a static method"
-
-
-with Connection():
-    @job(queue='default')
-    def decorated_job(x, y):
-        return x + y
 
 
 def black_hole(job, *exc_info):
@@ -240,15 +218,6 @@ def start_worker(queue_name, conn_kwargs, worker_name, burst):
             w = Worker([queue_name], name=worker_name, connection=Redis(**conn_kwargs))
             w.work(burst=burst)
 
-def start_worker_process(queue_name, connection=None, worker_name=None, burst=False):
-    """
-    Use multiprocessing to start a new worker in a separate process.
-    """
-    connection = connection or get_current_connection()
-    conn_kwargs = connection.connection_pool.connection_kwargs
-    p = Process(target=start_worker, args=(queue_name, conn_kwargs, worker_name, burst))
-    p.start()
-    return p
 
 def burst_two_workers(queue, timeout=2, tries=5, pause=0.1):
     """

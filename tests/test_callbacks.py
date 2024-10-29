@@ -5,7 +5,7 @@ from tests.fixtures import div_by_zero, erroneous_callback, save_exception, save
 
 from rq import Queue, Worker
 from rq.job import Job, JobStatus, UNEVALUATED
-from rq.worker import SimpleWorker
+from rq.worker import SimpleWorker, Worker
 
 
 class QueueCallbackTestCase(RQTestCase):
@@ -51,7 +51,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_success_callback(self):
         """Test success callback is executed only when job is successful"""
         queue = Queue(connection=self.testconn)
-        worker = SimpleWorker([queue])
+        worker = SimpleWorker(['default', 'high'], connection=self.testconn)
 
         job = queue.enqueue(say_hello, on_success=save_result)
 
@@ -71,7 +71,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_erroneous_success_callback(self):
         """Test exception handling when executing success callback"""
         queue = Queue(connection=self.testconn)
-        worker = Worker([queue])
+        worker = Worker(['default', 'high'], connection=self.testconn)
 
         # If success_callback raises an error, job will is considered as failed
         job = queue.enqueue(say_hello, on_success=erroneous_callback)
@@ -81,7 +81,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_failure_callback(self):
         """Test failure callback is executed only when job a fails"""
         queue = Queue(connection=self.testconn)
-        worker = SimpleWorker([queue])
+        worker = Worker(['default', 'high'], connection=self.testconn)
 
         job = queue.enqueue(div_by_zero, on_failure=save_exception)
 
@@ -89,7 +89,6 @@ class WorkerCallbackTestCase(RQTestCase):
         worker.work(burst=True)
         self.assertEqual(job.get_status(), JobStatus.FAILED)
         job.refresh()
-        print(job.exc_info)
         self.assertIn('div_by_zero',
                       self.testconn.get('failure_callback:%s' % job.id).decode())
 
@@ -103,7 +102,7 @@ class JobCallbackTestCase(RQTestCase):
 
     def test_job_creation_with_success_callback(self):
         """Ensure callbacks are created and persisted properly"""
-        job = Job.create(say_hello)
+        job = Job.create(say_hello, connection=self.testconn)
         self.assertIsNone(job._success_callback_name)
         # _success_callback starts with UNEVALUATED
         self.assertEqual(job._success_callback, UNEVALUATED)
@@ -112,7 +111,7 @@ class JobCallbackTestCase(RQTestCase):
         self.assertEqual(job._success_callback, None)
 
         # job.success_callback is assigned properly
-        job = Job.create(say_hello, on_success=print)
+        job = Job.create(say_hello, on_success=print, connection=self.testconn)
         self.assertIsNotNone(job._success_callback_name)
         self.assertEqual(job.success_callback, print)
         job.save()
@@ -122,7 +121,7 @@ class JobCallbackTestCase(RQTestCase):
 
     def test_job_creation_with_failure_callback(self):
         """Ensure failure callbacks are persisted properly"""
-        job = Job.create(say_hello)
+        job = Job.create(say_hello, connection=self.testconn)
         self.assertIsNone(job._failure_callback_name)
         # _failure_callback starts with UNEVALUATED
         self.assertEqual(job._failure_callback, UNEVALUATED)
@@ -131,7 +130,7 @@ class JobCallbackTestCase(RQTestCase):
         self.assertEqual(job._failure_callback, None)
 
         # job.failure_callback is assigned properly
-        job = Job.create(say_hello, on_failure=print)
+        job = Job.create(say_hello, on_failure=print, connection=self.testconn)
         self.assertIsNotNone(job._failure_callback_name)
         self.assertEqual(job.failure_callback, print)
         job.save()

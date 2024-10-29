@@ -381,9 +381,9 @@ class TestScheduler(RQTestCase):
         self.assertTrue(job.enqueued_at is not None)
         queue = scheduler.get_queue_for_job(job)
         self.assertIn(job, queue.jobs)
-        queue = Queue.from_queue_key('rq:queue:{0}'.format(queue_name))
+        queue = Queue.from_queue_key('rq:queue:{0}'.format(queue_name), connection=self.testconn)
         self.assertIn(job, queue.jobs)
-        self.assertIn(queue, Queue.all())
+        self.assertIn(queue, Queue.all(self.testconn))
 
     def test_enqueue_job_with_scheduler_queue(self):
         """
@@ -398,7 +398,7 @@ class TestScheduler(RQTestCase):
         scheduler.enqueue_job(job)
         self.assertTrue(job.enqueued_at is not None)
         self.assertIn(job, queue.jobs)
-        self.assertIn(queue, Queue.all())
+        self.assertIn(queue, Queue.all(self.testconn))
 
     def test_enqueue_job_with_job_queue_name(self):
         """
@@ -413,7 +413,7 @@ class TestScheduler(RQTestCase):
         scheduler.enqueue_job(job)
         self.assertTrue(job.enqueued_at is not None)
         self.assertIn(job, job_queue.jobs)
-        self.assertIn(job_queue, Queue.all())
+        self.assertIn(job_queue, Queue.all(self.testconn))
 
     def test_enqueue_at_with_job_queue_name(self):
         """
@@ -428,7 +428,7 @@ class TestScheduler(RQTestCase):
         self.scheduler.enqueue_job(job)
         self.assertTrue(job.enqueued_at is not None)
         self.assertIn(job, job_queue.jobs)
-        self.assertIn(job_queue, Queue.all())
+        self.assertIn(job_queue, Queue.all(self.testconn))
 
     def test_job_membership(self):
         now = datetime.utcnow()
@@ -797,7 +797,7 @@ class TestScheduler(RQTestCase):
         """
         Ensure instantiating Scheduler w/o explicit connection works.
         """
-        s = Scheduler()
+        s = Scheduler(connection=self.testconn)
         self.assertEqual(s.connection, self.testconn)
 
     def test_small_float_interval(self):

@@ -9,7 +9,7 @@ from datetime import datetime
 from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
-from rq.job import Job
+from rq.job import Job, JobStatus
 from rq.queue import Queue
 from rq.utils import backend_class, import_attribute
 
@@ -30,8 +30,9 @@ class Scheduler(object):
 
     def __init__(self, queue_name='default', queue=None, interval=60, connection=None,
                  job_class=None, queue_class=None, name=None):
-        from rq.connections import resolve_connection
-        self.connection = resolve_connection(connection)
+        if connection is None:
+            raise ValueError('`connection` argument is required')
+        self.connection = connection
         self._queue = queue
         if self._queue is None:
             self.queue_name = queue_name
@@ -143,7 +144,8 @@ class Scheduler(object):
             func, args=args, connection=self.connection,
             kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
             description=description, timeout=timeout, meta=meta,
-            depends_on=depends_on,on_success=on_success,on_failure=on_failure,
+            depends_on=depends_on, on_success=on_success, on_failure=on_failure,
+            status=JobStatus.SCHEDULED
         )
         if queue_name:
             job.origin = queue_name
