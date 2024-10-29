@@ -51,7 +51,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_success_callback(self):
         """Test success callback is executed only when job is successful"""
         queue = Queue(connection=self.testconn)
-        worker = SimpleWorker([queue])
+        worker = SimpleWorker([queue], connection=self.testconn)
 
         job = queue.enqueue(say_hello, on_success=save_result)
 
@@ -71,7 +71,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_erroneous_success_callback(self):
         """Test exception handling when executing success callback"""
         queue = Queue(connection=self.testconn)
-        worker = Worker([queue])
+        worker = Worker([queue], connection=self.testconn)
 
         # If success_callback raises an error, job will is considered as failed
         job = queue.enqueue(say_hello, on_success=erroneous_callback)
@@ -81,7 +81,7 @@ class WorkerCallbackTestCase(RQTestCase):
     def test_failure_callback(self):
         """Test failure callback is executed only when job a fails"""
         queue = Queue(connection=self.testconn)
-        worker = SimpleWorker([queue])
+        worker = SimpleWorker([queue], connection=self.testconn)
 
         job = queue.enqueue(div_by_zero, on_failure=save_exception)
 
