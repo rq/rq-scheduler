@@ -30,8 +30,9 @@ class Scheduler(object):
 
     def __init__(self, queue_name='default', queue=None, interval=60, connection=None,
                  job_class=None, queue_class=None, name=None):
-        from rq.connections import resolve_connection
-        self.connection = resolve_connection(connection)
+        if connection is None:
+            raise ValueError('`connection` argument is required')
+        self.connection = connection
         self._queue = queue
         if self._queue is None:
             self.queue_name = queue_name
