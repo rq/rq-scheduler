@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--pid', help='A filename to use for the PID file.', metavar='FILE')
     parser.add_argument('-j', '--job-class', help='Custom RQ Job class')
     parser.add_argument('-q', '--queue-class', help='Custom RQ Queue class')
+    parser.add_argument('--clear', action='store_true', default=False, help='clear job before exit')
 
     args = parser.parse_args()
 
@@ -58,7 +59,7 @@ def main():
                           interval=args.interval,
                           job_class=args.job_class,
                           queue_class=args.queue_class)
-    scheduler.run(burst=args.burst)
+    scheduler.run(burst=args.burst, clear=args.clear)
 
 if __name__ == '__main__':
     main()
