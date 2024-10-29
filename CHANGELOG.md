@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.14.0 (2024-10-29)
+* Support for RQ 2.0. Thanks @selwin!
+
 ## Version 0.13.1 (2023-05-03)
 * Support for RQ 1.14. Thanks @HerrTxbias!
 * Added `result_ttl` and `ttl` arguments to `scheduler.cron()`. Thanks @marcelblijleven!
