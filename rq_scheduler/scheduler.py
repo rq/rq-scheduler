@@ -208,6 +208,8 @@ class Scheduler(object):
                                on_success=on_success, on_failure=on_failure)
         if at_front:
             job.enqueue_at_front = True
+        else:
+            job.enqueue_at_front = False
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
         return job
@@ -236,6 +238,8 @@ class Scheduler(object):
                                depends_on=depends_on, on_success=on_success, on_failure=on_failure)
         if at_front:
             job.enqueue_at_front = True
+        else:
+            job.enqueue_at_front = False
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(datetime.utcnow() + time_delta)})
         return job
@@ -265,6 +269,8 @@ class Scheduler(object):
             raise ValueError("Can't repeat a job without interval argument")
         if at_front:
             job.enqueue_at_front = True
+        else:
+            job.enqueue_at_front = False
         job.save()
         self.connection.zadd(self.scheduled_jobs_key,
                               {job.id: to_unix(scheduled_time)})
@@ -291,6 +297,8 @@ class Scheduler(object):
         
         if at_front:
             job.enqueue_at_front = True
+        else:
+            job.enqueue_at_front = False
 
         job.save()
 
@@ -422,7 +430,7 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        queue.enqueue_job(job, at_front=bool(job.enqueue_at_front))
+        queue.enqueue_job(job, at_front=bool(getattr(job, "enqueue_at_front", False)))
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
