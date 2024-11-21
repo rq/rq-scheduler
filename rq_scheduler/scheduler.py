@@ -418,8 +418,10 @@ class Scheduler(object):
         use_local_timezone = job.meta.get('use_local_timezone', None)
 
         # If job is a repeated job, decrement counter
-        if repeat:
-            job.meta['repeat'] = int(repeat) - 1
+        if repeat is not None:
+            repeat = int(repeat)
+            if repeat > 0:
+                job.meta['repeat'] = repeat - 1
 
         queue = self.get_queue_for_job(job)
         queue.enqueue_job(job, at_front=bool(job.enqueue_at_front))
@@ -428,14 +430,14 @@ class Scheduler(object):
         if interval:
             # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
-                if job.meta['repeat'] == 0:
+                if job.meta['repeat'] <= 0:
                     return
             self.connection.zadd(self.scheduled_jobs_key,
                                   {job.id: to_unix(datetime.utcnow()) + int(interval)})
         elif cron_string:
             # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
-                if job.meta['repeat'] == 0:
+                if job.meta['repeat'] <= 0:
                     return
             next_scheduled_time = get_next_scheduled_time(cron_string, use_local_timezone=use_local_timezone)
             self.connection.zadd(self.scheduled_jobs_key,
