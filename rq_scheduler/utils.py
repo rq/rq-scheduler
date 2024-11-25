@@ -1,6 +1,8 @@
 import calendar
 import crontab
 import dateutil.tz
+import dateutil.rrule
+import dateutil.tz
 
 from datetime import datetime, timedelta
 import logging
@@ -26,6 +28,16 @@ def get_next_scheduled_time(cron_string, use_local_timezone=False):
     now = datetime.now()
     cron = crontab.CronTab(cron_string)
     next_time = cron.next(now=now, return_datetime=True)
+    tz = dateutil.tz.tzlocal() if use_local_timezone else dateutil.tz.UTC
+    return next_time.astimezone(tz)
+
+
+def get_next_rrule_scheduled_time(rrule_string, use_local_timezone=False):
+    """Calculate the next scheduled time by creating a rrule object
+    with a rrule string"""
+    now = datetime.now()
+    rrule = dateutil.rrule.rrulestr(rrule_string)
+    next_time = rrule.after(now)
     tz = dateutil.tz.tzlocal() if use_local_timezone else dateutil.tz.UTC
     return next_time.astimezone(tz)
 

@@ -14,7 +14,7 @@ from rq.job import Job
 
 from rq_scheduler import Scheduler
 from rq_scheduler.utils import from_unix
-from rq_scheduler.utils import get_next_scheduled_time
+from rq_scheduler.utils import get_next_scheduled_time, get_next_rrule_scheduled_time
 from rq_scheduler.utils import to_unix
 from tests import RQTestCase
 
@@ -874,3 +874,171 @@ class TestScheduler(RQTestCase):
         job = self.scheduler._create_job(say_hello)
         job_from_queue = Job.fetch(job.id, connection=self.testconn)
         self.assertFalse(job_from_queue.meta.get("queue_class_name"))
+
+    def test_rrule_persisted_correctly(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - datetime.utcnow() <= timedelta(hours=1), f"{datetime_time - datetime.utcnow()} is greater than 1 hour"
+
+    def test_rrule_persisted_correctly_with_local_timezone(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis when using local TZ.
+        """
+        # create a job that runs each day at 15:00
+        job = self.scheduler.rrule("RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=0;BYSECOND=0", say_hello, use_local_timezone=True)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=0;BYSECOND=0")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        expected_datetime_in_local_tz = datetime.now(tzlocal()).replace(hour=15,minute=0,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(UTC).time()
+
+    def test_rrule_rescheduled_correctly_with_local_timezone(self):
+        # Create a job that runs each day at 15:01
+        job = self.scheduler.rrule("RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=1;BYSECOND=0", say_hello, use_local_timezone=True)
+
+        # Change this job to run each day at 15:02
+        job.meta['rrule_string'] = "RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=2;BYSECOND=0"
+
+        # reenqueue the job
+        self.scheduler.enqueue_job(job)
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        expected_datetime_in_local_tz = datetime.now(tzlocal()).replace(hour=15,minute=2,second=0,microsecond=0)
+        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(UTC).time()
+
+    def test_rrule_schedules_correctly(self):
+        # Create a job with a rrulejob_string
+        now = datetime.now().replace(minute=0, hour=0, second=0, microsecond=0)
+        with freezegun.freeze_time(now):
+            job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=5;BYSECOND=0", say_hello)
+
+        with mock.patch.object(self.scheduler, 'enqueue_job', wraps=self.scheduler.enqueue_job) as enqueue_job, \
+                freezegun.freeze_time(now + timedelta(minutes=5)):
+            self.assertEqual(1, self.scheduler.count())
+            self.scheduler.enqueue_jobs()
+            self.assertEqual(1, enqueue_job.call_count)
+
+            (job, next_scheduled_time), = self.scheduler.get_jobs(with_times=True)
+            expected_scheduled_time = (now + timedelta(hours=1, minutes=5)).astimezone(UTC)
+            self.assertEqual(to_unix(expected_scheduled_time), to_unix(next_scheduled_time), f"{next_scheduled_time} should be {expected_scheduled_time}")
+
+    def test_rrule_sets_timeout(self):
+        """
+        Ensure that a job scheduled via rrule can be created with
+        a custom timeout.
+        """
+        timeout = 13
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello, timeout=timeout)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.timeout, timeout)
+
+    def test_rrule_sets_id(self):
+        """
+        Ensure that a job scheduled via rrule can be created with
+        a custom id
+        """
+        job_id = "hello-job-id"
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello, id=job_id)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_id, job_from_queue.id)
+
+    def test_rrule_sets_default_result_ttl(self):
+        """
+        Ensure that a job scheduled via rrule gets proper default
+        result_ttl (-1) periodic tasks.
+        """
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(-1, job_from_queue.result_ttl)
+
+    def test_rrule_sets_description(self):
+        """
+        Ensure that a job scheduled via rrule can be created with
+        a custom description
+        """
+        description = 'test description'
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello, description=description)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(description, job_from_queue.description)
+
+    def test_rrule_sets_default_result_ttl_to_minus_1(self):
+        """
+        Ensure that a job scheduled via rrule sets the default result_ttl to -1
+        """
+        result_ttl = -1
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(result_ttl, job_from_queue.result_ttl)
+
+    def test_rrule_sets_provided_result_ttl(self):
+        """
+        Ensure that a job scheduled via rrule can be created with
+        a custom result_ttl
+        """
+        result_ttl = 123
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello, result_ttl=result_ttl)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(result_ttl, job_from_queue.result_ttl)
+
+    def test_rrule_sets_default_ttl_to_none(self):
+        """
+        Ensure that a job scheduled via rrule sets the default result_ttl to -1
+        """
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertIsNone(job_from_queue.ttl)
+
+    def test_rrule_sets_provided_ttl(self):
+        """
+        Ensure that a job scheduled via rrule can be created with
+        a custom result_ttl
+        """
+        ttl = 123
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello, ttl=ttl)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(ttl, job_from_queue.ttl)
+
+    def test_job_with_rrule_get_rescheduled(self):
+        # Create a job with a rrule_string
+        job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+
+        # current unix_time
+        old_next_scheduled_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+
+        # change rrule_string
+        job.meta['rrule_string'] = "RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=2;BYSECOND=0"
+
+        # enqueue the job
+        self.scheduler.enqueue_job(job)
+
+        self.assertIn(job.id,
+            tl(self.testconn.zrange(self.scheduler.scheduled_jobs_key, 0, 1)))
+
+        # check that next scheduled time has changed
+        self.assertNotEqual(old_next_scheduled_time,
+                            self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id))
+
+        # check that new next scheduled time is set correctly
+        expected_next_scheduled_time = to_unix(get_next_rrule_scheduled_time("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=2;BYSECOND=0"))
+        self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
+                         expected_next_scheduled_time)
