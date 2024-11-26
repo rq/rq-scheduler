@@ -2,7 +2,7 @@ import calendar
 import crontab
 import dateutil.tz
 import dateutil.rrule
-import dateutil.tz
+import re
 
 from datetime import datetime, timedelta
 import logging
@@ -32,14 +32,17 @@ def get_next_scheduled_time(cron_string, use_local_timezone=False):
     return next_time.astimezone(tz)
 
 
-def get_next_rrule_scheduled_time(rrule_string, use_local_timezone=False):
+def get_next_rrule_scheduled_time(rrule_string):
     """Calculate the next scheduled time by creating a rrule object
     with a rrule string"""
-    now = datetime.now()
-    rrule = dateutil.rrule.rrulestr(rrule_string)
-    next_time = rrule.after(now)
-    tz = dateutil.tz.tzlocal() if use_local_timezone else dateutil.tz.UTC
-    return next_time.astimezone(tz)
+    timezone = dateutil.tz.UTC
+    rule = dateutil.rrule.rrulestr(rrule_string)
+    if rule._dtstart.tzinfo is None:
+        now = datetime.now()  # naive datetime
+    else:
+        now = datetime.now(tz=timezone)  # aware datetime
+    next_time = rule.after(now)
+    return next_time.astimezone(timezone)
 
 
 def setup_loghandlers(level='INFO'):

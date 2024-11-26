@@ -300,12 +300,12 @@ class Scheduler(object):
 
 
     def rrule(self, rrule_string, func, args=None, kwargs=None, repeat=None,
-             queue_name=None, result_ttl=-1, ttl=None, id=None, timeout=None, description=None, meta=None, use_local_timezone=False,
+             queue_name=None, result_ttl=-1, ttl=None, id=None, timeout=None, description=None, meta=None,
              depends_on=None, on_success=None, on_failure=None, at_front: bool = False):
         """
         Schedule a recurring job via RRule
         """
-        scheduled_time = get_next_rrule_scheduled_time(rrule_string, use_local_timezone=use_local_timezone)
+        scheduled_time = get_next_rrule_scheduled_time(rrule_string)
 
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, ttl=ttl, id=id, queue_name=queue_name,
@@ -313,7 +313,6 @@ class Scheduler(object):
                                on_success=on_success, on_failure=on_failure)
 
         job.meta['rrule_string'] = rrule_string
-        job.meta['use_local_timezone'] = use_local_timezone
 
         if repeat is not None:
             job.meta['repeat'] = int(repeat)
@@ -468,7 +467,7 @@ class Scheduler(object):
             self.connection.zadd(self.scheduled_jobs_key,
                                  {job.id: to_unix(next_scheduled_time)})
         elif rrule_string:
-            next_scheduled_time = get_next_rrule_scheduled_time(rrule_string, use_local_timezone=use_local_timezone)
+            next_scheduled_time = get_next_rrule_scheduled_time(rrule_string)
             self.connection.zadd(self.scheduled_jobs_key,
                                  {job.id: to_unix(next_scheduled_time)})
 

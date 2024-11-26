@@ -893,25 +893,9 @@ class TestScheduler(RQTestCase):
         assert datetime_time.second == 0
         assert datetime_time - datetime.utcnow() <= timedelta(hours=1), f"{datetime_time - datetime.utcnow()} is greater than 1 hour"
 
-    def test_rrule_persisted_correctly_with_local_timezone(self):
-        """
-        Ensure that rrule attribute gets correctly saved in Redis when using local TZ.
-        """
-        # create a job that runs each day at 15:00
-        job = self.scheduler.rrule("RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=0;BYSECOND=0", say_hello, use_local_timezone=True)
-        job_from_queue = Job.fetch(job.id, connection=self.testconn)
-        self.assertEqual(job_from_queue.meta['rrule_string'], "RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=0;BYSECOND=0")
-
-        # get the scheduled_time and convert it to a datetime object
-        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
-        datetime_time = from_unix(unix_time)
-
-        expected_datetime_in_local_tz = datetime.now(tzlocal()).replace(hour=15,minute=0,second=0,microsecond=0)
-        assert datetime_time.time() == expected_datetime_in_local_tz.astimezone(UTC).time()
-
-    def test_rrule_rescheduled_correctly_with_local_timezone(self):
+    def test_rrule_rescheduled_correctly(self):
         # Create a job that runs each day at 15:01
-        job = self.scheduler.rrule("RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=1;BYSECOND=0", say_hello, use_local_timezone=True)
+        job = self.scheduler.rrule("RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=1;BYSECOND=0", say_hello)
 
         # Change this job to run each day at 15:02
         job.meta['rrule_string'] = "RRULE:FREQ=DAILY;WKST=MO;BYHOUR=15;BYMINUTE=2;BYSECOND=0"
@@ -1042,3 +1026,102 @@ class TestScheduler(RQTestCase):
         expected_next_scheduled_time = to_unix(get_next_rrule_scheduled_time("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=2;BYSECOND=0"))
         self.assertEqual(self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id),
                          expected_next_scheduled_time)
+
+    def test_rrule_persisted_correctly_with_dtstart(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.rrule("DTSTART:20241126T154900Z\nRRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "DTSTART:20241126T154900Z\nRRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - datetime.utcnow() <= timedelta(hours=1), f"{datetime_time - datetime.utcnow()} is greater than 1 hour"
+
+    def test_rrule_persisted_correctly_with_dtstart_and_tzid(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.rrule("DTSTART;TZID=Europe/Brussels:20241126T155000\nRRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "DTSTART;TZID=Europe/Brussels:20241126T155000\nRRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - datetime.utcnow() <= timedelta(hours=1), f"{datetime_time - datetime.utcnow()} is greater than 1 hour"
+
+    def test_rrule_persisted_correctly_with_dtstart_and_until(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        now = datetime.utcnow().replace(year=2024, month=11, day=27)
+        with freezegun.freeze_time(now):
+            # create a job that runs one minute past each whole hour
+            job = self.scheduler.rrule("DTSTART:20241126T155000Z\nRRULE:FREQ=HOURLY;UNTIL=20241129T000000Z;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "DTSTART:20241126T155000Z\nRRULE:FREQ=HOURLY;UNTIL=20241129T000000Z;WKST=MO;BYMINUTE=1;BYSECOND=0")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - now <= timedelta(hours=1), f"{datetime_time - now} is greater than 1 hour"
+
+    def test_rrule_persisted_correctly_with_dtstart_and_until_and_tzid(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        now = datetime.utcnow().replace(year=1997, month=1, day=1)
+        with freezegun.freeze_time(now):
+            # create a job that runs one minute past each whole hour
+            job = self.scheduler.rrule("DTSTART;TZID=America/New_York:19970101T000000\n"
+                            "RRULE:FREQ=HOURLY;UNTIL=19990101T000000Z;BYMINUTE=1;BYSECOND=0\n", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "DTSTART;TZID=America/New_York:19970101T000000\n"
+                          "RRULE:FREQ=HOURLY;"
+                          "UNTIL=19990101T000000Z;BYMINUTE=1;BYSECOND=0\n")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - now <= timedelta(hours=1), f"{datetime_time - now} is greater than 1 hour"
+
+    def test_rrule_persisted_correctly_with_until(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        now = datetime.utcnow().replace(year=2024, month=11, day=27)
+        with freezegun.freeze_time(now):
+            # create a job that runs one minute past each whole hour
+            job = self.scheduler.rrule("RRULE:FREQ=HOURLY;UNTIL=20241129T000000Z;WKST=MO;BYMINUTE=1;BYSECOND=0", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "RRULE:FREQ=HOURLY;UNTIL=20241129T000000Z;WKST=MO;BYMINUTE=1;BYSECOND=0")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - now <= timedelta(hours=1), f"{datetime_time - now} is greater than 1 hour"
