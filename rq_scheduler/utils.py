@@ -36,12 +36,12 @@ def get_next_rrule_scheduled_time(rrule_string):
     """Calculate the next scheduled time by creating a rrule object
     with a rrule string"""
     timezone = dateutil.tz.UTC
-    rule = dateutil.rrule.rrulestr(rrule_string)
-    if rule._dtstart.tzinfo is None:
+    ruleset = dateutil.rrule.rrulestr(rrule_string, forceset=True)
+    if ruleset[0].tzinfo is None:
         now = datetime.now()  # naive datetime
     else:
         now = datetime.now(tz=timezone)  # aware datetime
-    next_time = rule.after(now)
+    next_time = ruleset.after(now)
     return next_time.astimezone(timezone)
 
 

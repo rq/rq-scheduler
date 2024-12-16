@@ -1125,3 +1125,21 @@ class TestScheduler(RQTestCase):
         assert datetime_time.minute == 1
         assert datetime_time.second == 0
         assert datetime_time - now <= timedelta(hours=1), f"{datetime_time - now} is greater than 1 hour"
+
+    def test_rruleset_persisted_correctly_with_dtstart(self):
+        """
+        Ensure that rrule attribute gets correctly saved in Redis.
+        """
+        # create a job that runs one minute past each whole hour
+        job = self.scheduler.rrule("DTSTART:20241126T154900Z\nRRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0\nRRULE:FREQ=MINUTELY;INTERVAL=5;COUNT=2", say_hello)
+        job_from_queue = Job.fetch(job.id, connection=self.testconn)
+        self.assertEqual(job_from_queue.meta['rrule_string'], "DTSTART:20241126T154900Z\nRRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=1;BYSECOND=0\nRRULE:FREQ=MINUTELY;INTERVAL=5;COUNT=2")
+
+        # get the scheduled_time and convert it to a datetime object
+        unix_time = self.testconn.zscore(self.scheduler.scheduled_jobs_key, job.id)
+        datetime_time = from_unix(unix_time)
+
+        # check that minute=1, seconds=0, and is within an hour
+        assert datetime_time.minute == 1
+        assert datetime_time.second == 0
+        assert datetime_time - datetime.utcnow() <= timedelta(hours=1), f"{datetime_time - datetime.utcnow()} is greater than 1 hour"
