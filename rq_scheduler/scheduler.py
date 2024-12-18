@@ -422,7 +422,13 @@ class Scheduler(object):
             job.meta['repeat'] = int(repeat) - 1
 
         queue = self.get_queue_for_job(job)
-        queue.enqueue_job(job, at_front=bool(job.enqueue_at_front))
+        # check to see if a job with meta.unique_job_id set is already in job queue
+        unique_job_id = job.meta.get('unique_job_id')
+        if unique_job_id and unique_job_id in [j.meta.get('unique_job_id') for j in queue.jobs]:
+            self.log.info(f'job {job.id} already queued in {queue.name} queue by meta.unique_job_id {unique_job_id}')
+        else:
+             queue.enqueue_job(job, at_front=bool(job.enqueue_at_front)) 
+            
         self.connection.zrem(self.scheduled_jobs_key, job.id)
 
         if interval:
