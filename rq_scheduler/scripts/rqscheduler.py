@@ -4,7 +4,7 @@ import argparse
 import sys
 import os
 
-from redis import Redis
+import redis
 from rq_scheduler.scheduler import Scheduler
 
 from rq_scheduler.utils import setup_loghandlers
@@ -19,6 +19,7 @@ def main():
     parser.add_argument('-P', '--password', default=os.environ.get('RQ_REDIS_PASSWORD'), help="Redis password")
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Show more output')
     parser.add_argument('--quiet', action='store_true', default=False, help='Show less output')
+    parser.add_argument('-s', '--ssl', default=False, type=bool, help='to use ssl connection')
     parser.add_argument('--url', '-u', default=os.environ.get('RQ_REDIS_URL')
         , help='URL describing Redis connection details. \
             Overrides other connection arguments if supplied.')
@@ -44,7 +45,7 @@ def main():
     if args.url is not None:
         connection = Redis.from_url(args.url)
     else:
-        connection = Redis(args.host, args.port, args.db, args.password)
+        connection = redis.Redis(host=args.host, port=args.port, db=args.db, password=args.password, ssl=False)
 
     if args.verbose:
         level = 'DEBUG'
