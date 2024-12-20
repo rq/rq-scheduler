@@ -117,6 +117,8 @@ This is how you do it
 either do not set a `result_ttl` value or you set a value larger than the interval.
 Otherwise, the entry with the job details will expire and the job will not get re-scheduled.
 
+**IMPORTANT NOTE**: Read more about intervals in the section `Scheduler polling interval vs job interval`_ below.
+
 ------------------------
 Cron Jobs
 ------------------------
@@ -237,6 +239,43 @@ The script accepts these arguments:
 
 The arguments pull default values from environment variables with the
 same names but with a prefix of ``RQ_REDIS_``.
+
+**IMPORTANT NOTE**: Read more about intervals in the section `Scheduler polling interval vs job interval`_ below.
+
+------------------------------------------
+Scheduler polling interval vs job interval
+------------------------------------------
+
+There are two different intervals to consider when running the scheduler:
+
+* the scheduler *polling* interval
+* the job interval
+
+This code illustrates the difference:
+
+.. code-block:: python
+
+    from rq_scheduler import Scheduler
+
+    POLLING_INTERVAL = int(...)
+    JOB_INTERVAL = int(...)
+
+    # this interval defaults to 60 seconds
+    scheduler = Scheduler(interval=POLLING_INTERVAL)
+
+    scheduler.schedule(
+        scheduled_time=datetime.now(),
+        func=my_func,
+        interval=JOB_INTERVAL,
+    )
+
+    scheduler.run()
+
+
+The intervals have to satisfy the following conditions:
+
+* the job interval has to be a multiple of the scheduler interval
+* the job interval has to be greater than the scheduler interval
 
 Running the Scheduler as a Service on Ubuntu
 --------------------------------------------
