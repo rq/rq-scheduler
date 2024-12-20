@@ -274,8 +274,18 @@ This code illustrates the difference:
 
 The intervals have to satisfy the following conditions:
 
-* the job interval has to be a multiple of the scheduler interval
-* the job interval has to be greater than the scheduler interval
+* the job interval has to be greater than the scheduler interval, otherwise the job will run only as often as the scheduler polls
+* the job interval has to be a multiple of the scheduler interval, otherwise the job will run at irregular intervals
+
+For example, if the scheduler polls every 3 seconds and the job interval is 10 seconds, the job will run every 12 seconds:
+
+* 0s: scheduler polls
+* 3s: scheduler polls
+* 6s: scheduler polls
+* 9s: scheduler polls
+* 10s: job is supposed to run
+* 12s: scheduler polls, and job only now runs
+
 
 Running the Scheduler as a Service on Ubuntu
 --------------------------------------------
