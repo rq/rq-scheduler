@@ -926,6 +926,20 @@ class TestScheduler(RQTestCase):
             expected_scheduled_time = (now + timedelta(hours=1, minutes=5)).astimezone(UTC)
             self.assertEqual(to_unix(expected_scheduled_time), to_unix(next_scheduled_time), f"{next_scheduled_time} should be {expected_scheduled_time}")
 
+    def test_rrule_without_upcoming_occurences(self):
+        # Create a job with a rrulejob_string that has no occurence in the future
+        now = datetime.fromisoformat("2024-12-26T12:00:00")
+        with freezegun.freeze_time(now):
+            job = self.scheduler.rrule("RRULE:FREQ=HOURLY;WKST=MO;BYMINUTE=5;BYSECOND=0;UNTIL=20241225T120000Z", say_hello)
+            with mock.patch.object(self.scheduler, 'enqueue_job', wraps=self.scheduler.enqueue_job) as enqueue_job:
+                self.assertEqual(0, self.scheduler.count())
+                self.scheduler.enqueue_jobs()
+                self.assertEqual(0, enqueue_job.call_count)
+
+                jobs = self.scheduler.get_jobs(with_times=True)
+                for j in jobs:
+                    self.assertFalse()
+
     def test_rrule_sets_timeout(self):
         """
         Ensure that a job scheduled via rrule can be created with

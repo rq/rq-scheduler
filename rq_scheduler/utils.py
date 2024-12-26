@@ -37,12 +37,20 @@ def get_next_rrule_scheduled_time(rrule_string):
     with a rrule string"""
     timezone = dateutil.tz.UTC
     ruleset = dateutil.rrule.rrulestr(rrule_string, forceset=True)
-    if ruleset[0].tzinfo is None:
-        now = datetime.now()  # naive datetime
+    any_occurence = None
+    for occur in ruleset:
+        any_occurence = occur
+        break
+    if any_occurence is None:
+        return None
+    if any_occurence.tzinfo is None:
+        now = datetime.now()
     else:
-        now = datetime.now(tz=timezone)  # aware datetime
-    next_time = ruleset.after(now)
-    return next_time.astimezone(timezone)
+        now = datetime.now(tz=timezone)
+    next_occurence = ruleset.after(now)
+    if next_occurence is None:
+        return None
+    return next_occurence.astimezone(timezone)
 
 
 def setup_loghandlers(level='INFO'):

@@ -306,6 +306,8 @@ class Scheduler(object):
         Schedule a recurring job via RRule
         """
         scheduled_time = get_next_rrule_scheduled_time(rrule_string)
+        if not scheduled_time:
+            return None
 
         job = self._create_job(func, args=args, kwargs=kwargs, commit=False,
                                result_ttl=result_ttl, ttl=ttl, id=id, queue_name=queue_name,
