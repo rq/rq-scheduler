@@ -108,8 +108,21 @@ class Scheduler(object):
             self.connection.delete(key)
             self._lock_acquired = False
             self.log.debug('{}: Lock Removed'.format(self.key))
+            
+    def _clear_job_on_exit(self):
+        """
+        Clears the job on exit.
+        """
+        try:
+            self.log.info('Clear RQ scheduler jobs...')
+            jobs = self.get_jobs()
+            for job in jobs:
+                self.cancel(job)
+            self.log.info('Clear RQ scheduler jobs finished')
+        except NoSuchJobError:
+            pass
 
-    def _install_signal_handlers(self):
+    def _install_signal_handlers(self, clear):
         """
         Installs signal handlers for handling SIGINT and SIGTERM
         gracefully.
@@ -121,6 +134,8 @@ class Scheduler(object):
             and remove previously acquired lock and exit.
             """
             self.log.info('Shutting down RQ scheduler...')
+            if clear:
+                self._clear_job_on_exit()
             self.register_death()
             self.remove_lock()
             raise SystemExit()
@@ -461,14 +476,14 @@ class Scheduler(object):
         self.log.debug('{}: Sending a HeartBeat'.format(self.key))
         self.connection.expire(self.key, int(self._interval) + 10)
 
-    def run(self, burst=False):
+    def run(self, burst=False, clear=False):
         """
         Periodically check whether there's any job that should be put in the queue (score
         lower than current time).
         """
 
         self.register_birth()
-        self._install_signal_handlers()
+        self._install_signal_handlers(clear)
 
         try:
             while True:
