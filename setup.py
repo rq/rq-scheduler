@@ -19,7 +19,7 @@ setup(
     rqscheduler = rq_scheduler.scripts.rqscheduler:main
     ''',
     package_data={'': ['README.rst']},
-    install_requires=['crontab>=0.23.0', 'rq>=2', 'python-dateutil', 'freezegun'],
+    install_requires=['crontab>=0.23.0', 'rq>=2', 'python-dateutil'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
