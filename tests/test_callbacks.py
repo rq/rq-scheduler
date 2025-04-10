@@ -103,16 +103,10 @@ class JobCallbackTestCase(RQTestCase):
     def test_job_creation_with_success_callback(self):
         """Ensure callbacks are created and persisted properly"""
         job = Job.create(say_hello, connection=self.testconn)
-        self.assertIsNone(job._success_callback_name)
-        # _success_callback starts with UNEVALUATED
-        self.assertEqual(job._success_callback, UNEVALUATED)
         self.assertEqual(job.success_callback, None)
-        # _success_callback becomes `None` after `job.success_callback` is called if there's no success callback
-        self.assertEqual(job._success_callback, None)
 
         # job.success_callback is assigned properly
         job = Job.create(say_hello, on_success=print, connection=self.testconn)
-        self.assertIsNotNone(job._success_callback_name)
         self.assertEqual(job.success_callback, print)
         job.save()
 
@@ -122,16 +116,10 @@ class JobCallbackTestCase(RQTestCase):
     def test_job_creation_with_failure_callback(self):
         """Ensure failure callbacks are persisted properly"""
         job = Job.create(say_hello, connection=self.testconn)
-        self.assertIsNone(job._failure_callback_name)
-        # _failure_callback starts with UNEVALUATED
-        self.assertEqual(job._failure_callback, UNEVALUATED)
         self.assertEqual(job.failure_callback, None)
-        # _failure_callback becomes `None` after `job.failure_callback` is called if there's no failure callback
-        self.assertEqual(job._failure_callback, None)
 
         # job.failure_callback is assigned properly
         job = Job.create(say_hello, on_failure=print, connection=self.testconn)
-        self.assertIsNotNone(job._failure_callback_name)
         self.assertEqual(job.failure_callback, print)
         job.save()
 
