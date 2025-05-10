@@ -5,7 +5,7 @@ import os
 import socket
 from uuid import uuid4
 
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
@@ -394,7 +394,7 @@ class Scheduler(object):
         # Turn the generator into a concrete list, so callers can test its length.
         return [
             job for job
-            in self.get_jobs(to_unix(datetime.now(datetime.timezone.utc)), with_times=with_times)
+            in self.get_jobs(to_unix(datetime.now(timezone.utc)), with_times=with_times)
         ]
 
     def get_queue_for_job(self, job):
