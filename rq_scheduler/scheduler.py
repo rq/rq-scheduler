@@ -391,7 +391,11 @@ class Scheduler(object):
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
         """
-        return self.get_jobs(to_unix(datetime.utcnow()), with_times=with_times)
+        # Turn the generator into a concrete list, so callers can test its length.
+        return [
+            job for job
+            in self.get_jobs(to_unix(datetime.now(datetime.timezone.utc)), with_times=with_times)
+        ]
 
     def get_queue_for_job(self, job):
         """
@@ -476,17 +480,21 @@ class Scheduler(object):
                 self.heartbeat()
 
                 start_time = time.time()
-                if self.acquire_lock():
-                    self.log.debug('{}: Acquired Lock'.format(self.key))
-                    self.enqueue_jobs()
-                    self.heartbeat()
-                    self.remove_lock()
+                if self.get_jobs_to_queue():
+                    if self.acquire_lock():
+                        self.log.debug('{}: Acquired Lock'.format(self.key))
+                        self.enqueue_jobs()
+                        self.heartbeat()
+                        self.remove_lock()
 
-                    if burst:
-                        self.log.info('RQ scheduler done, quitting')
-                        break
+                        if burst:
+                            self.log.info('RQ scheduler done, quitting')
+                            break
+                    else:
+                        self.log.warning('Lock already taken - skipping run')
                 else:
-                    self.log.warning('Lock already taken - skipping run')
+                    # Still perform the heartbeat even if there weren't any jobs to enqueue.
+                    self.heartbeat()
 
                 # Time has already elapsed while enqueuing jobs, so don't wait too long.
                 seconds_elapsed_since_start = time.time() - start_time
