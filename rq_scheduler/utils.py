@@ -25,7 +25,7 @@ def get_next_scheduled_time(cron_string, use_local_timezone=False):
     with a cron string"""
     now = datetime.now()
     cron = crontab.CronTab(cron_string)
-    next_time = cron.next(now=now, return_datetime=True)
+    next_time = cron.next(now=now, return_datetime=True, default_utc=True)
     tz = dateutil.tz.tzlocal() if use_local_timezone else dateutil.tz.UTC
     return next_time.astimezone(tz)
 
