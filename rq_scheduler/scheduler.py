@@ -5,7 +5,7 @@ import os
 import socket
 from uuid import uuid4
 
-from datetime import datetime
+from datetime import datetime, UTC
 from itertools import repeat
 
 from rq.exceptions import NoSuchJobError
@@ -216,7 +216,7 @@ class Scheduler(object):
         """
         Similar to ``enqueue_at``, but accepts a timedelta instead of datetime object.
         The job's scheduled execution time will be calculated by adding the timedelta
-        to datetime.utcnow().
+        to datetime.now(UTC).
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
@@ -237,7 +237,7 @@ class Scheduler(object):
         if at_front:
             job.enqueue_at_front = True
         self.connection.zadd(self.scheduled_jobs_key,
-                              {job.id: to_unix(datetime.utcnow() + time_delta)})
+                              {job.id: to_unix(datetime.now(UTC) + time_delta)})
         return job
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
@@ -391,7 +391,7 @@ class Scheduler(object):
         If with_times is True a list of tuples consisting of the job instance and
         it's scheduled execution time is returned.
         """
-        return self.get_jobs(to_unix(datetime.utcnow()), with_times=with_times)
+        return self.get_jobs(to_unix(datetime.now(UTC)), with_times=with_times)
 
     def get_queue_for_job(self, job):
         """
@@ -431,7 +431,7 @@ class Scheduler(object):
                 if job.meta['repeat'] == 0:
                     return
             self.connection.zadd(self.scheduled_jobs_key,
-                                  {job.id: to_unix(datetime.utcnow()) + int(interval)})
+                                  {job.id: to_unix(datetime.now(UTC)) + int(interval)})
         elif cron_string:
             # If this is a repeat job and counter has reached 0, don't repeat
             if repeat is not None:
